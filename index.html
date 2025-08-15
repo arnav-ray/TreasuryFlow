@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TreasuryFlow - Comprehensive ERP Agnostic Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        .tab-button { padding: 1rem 0.5rem; color: #4b5563; border-bottom: 2px solid transparent; transition: all 0.3s ease; cursor: pointer; white-space: nowrap; }
+        .tab-button.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
+        .sub-tab-button { color: #4b5563; border-bottom: 2px solid transparent; cursor: pointer; }
+        .sub-tab-button.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 500;}
+        .tab-content, .sub-tab-content { display: none; }
+        .tab-content.active, .sub-tab-content.active { display: block; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .process-step { position: relative; padding-left: 2.5rem; padding-bottom: 1.5rem; }
+        .process-step::before { content: attr(data-step); position: absolute; left: 0; top: 0; width: 2rem; height: 2rem; border-radius: 50%; background-color: #d1d5db; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #f3f4f6; transition: all 0.3s ease; }
+        .process-step::after { content: ''; position: absolute; left: 0.95rem; top: 2rem; width: 2px; height: 100%; background-color: #d1d5db; transition: all 0.3s ease; }
+        .process-step:last-child::after { display: none; }
+        .process-step.completed::before { background-color: #10b981; }
+        .process-step.active::before { background-color: #3b82f6; transform: scale(1.1); border-color: #dbeafe; }
+        .process-step.completed::after { background-color: #10b981; }
+        .document-link.highlighted { background-color: #eff6ff; border: 1px solid #3b82f6; }
+        .modal-backdrop { animation: fadeIn 0.3s ease; }
+        .modal-content { animation: slideUp 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .permission-toggle { accent-color: #3b82f6; }
+        .floating-chat-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 30; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="flex h-screen flex-col">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="flex items-center justify-center h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
+            <div class="bg-white p-8 rounded-xl shadow-2xl w-96 transform transition-all hover:scale-105 duration-300">
+                <div class="text-center mb-8"><div class="text-4xl font-bold text-blue-600 mb-2"><i class="fas fa-water"></i> TreasuryFlow</div><p class="text-gray-600">ERP Agnostic Treasury Management Platform</p></div>
+                <div class="space-y-4">
+                    <div><label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label><input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., admin"></div>
+                    <div><label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label><input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., password"></div>
+                    <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg hover:shadow-xl">Sign In</button>
+                </div>
+                <div class="mt-6 text-center"><p class="text-sm text-gray-500">Demo accounts:</p><div class="text-xs text-gray-400 mt-1"><p>Admin: <strong>admin</strong> / password</p><p>Finance: <strong>finance</strong> / password</p><p>Approver: <strong>approver</strong> / password</p></div></div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div id="mainApp" class="hidden h-screen flex-col">
+            <header class="bg-white shadow-sm border-b px-6 py-3"><div class="flex items-center justify-between"><div class="flex items-center"><h1 class="text-2xl font-bold text-blue-900 flex items-center"><i class="fas fa-water mr-2"></i>TreasuryFlow</h1><div class="ml-6 flex space-x-2 items-center"><span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-full flex items-center"><i class="fas fa-circle text-green-500 text-xs mr-2 animate-pulse"></i>Connected</span><div id="currency-rates-status" class="text-xs text-gray-500"></div></div></div><div class="flex items-center space-x-4"><div class="relative"><input type="text" placeholder="Search..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div><div class="flex items-center space-x-3"><div class="text-right"><p class="text-sm font-medium text-gray-800" id="userDisplayName"></p><p class="text-xs text-gray-500" id="userRole"></p></div><img src="" alt="User" id="userAvatar" class="w-10 h-10 rounded-full"><button id="logoutBtn" class="text-gray-400 hover:text-red-600 transition-colors" title="Logout"><i class="fas fa-sign-out-alt fa-lg"></i></button></div></div></div></header>
+            <div class="bg-white border-b"><nav id="main-tabs" class="flex space-x-8 px-6 overflow-x-auto"><button class="tab-button active" data-tab="dashboard"><i class="fas fa-chart-line mr-2"></i>Dashboard</button><button class="tab-button" data-tab="ap"><i class="fas fa-money-check-alt mr-2"></i>AP Management</button><button class="tab-button" data-tab="ar"><i class="fas fa-hand-holding-usd mr-2"></i>AR Management</button><button class="tab-button" data-tab="treasury"><i class="fas fa-piggy-bank mr-2"></i>Treasury Ops</button><button class="tab-button" data-tab="master-data"><i class="fas fa-database mr-2"></i>Master Data</button><button class="tab-button" data-tab="financials"><i class="fas fa-file-invoice-dollar mr-2"></i>Financials</button><button class="tab-button" data-tab="process"><i class="fas fa-sitemap mr-2"></i>Process Flow</button><button class="tab-button" data-tab="governance"><i class="fas fa-shield-alt mr-2"></i>Governance</button></nav></div>
+            <main class="flex-1 overflow-y-auto bg-gray-100">
+                <!-- All Tab Content is pre-loaded here and toggled by JS -->
+                <div id="dashboard-content" class="tab-content active"><div class="p-6"><div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6"><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">Available Cash</p><p id="db-cash" class="text-2xl font-bold text-gray-900"></p><p class="text-sm text-green-600 flex items-center mt-1"><i class="fas fa-arrow-up mr-1"></i>2.3%</p></div><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">AP Outstanding</p><p id="db-ap" class="text-2xl font-bold text-gray-900"></p><p class="text-sm text-red-600 flex items-center mt-1"><i class="fas fa-arrow-down mr-1"></i>1.2%</p></div><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">AR Outstanding</p><p id="db-ar" class="text-2xl font-bold text-gray-900"></p><p class="text-sm text-green-600 flex items-center mt-1"><i class="fas fa-arrow-up mr-1"></i>3.1%</p></div><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">Liquidity Risk</p><p class="text-2xl font-bold text-green-700">Low</p><p class="text-sm text-gray-500 mt-1">Optimal position</p></div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Cash Flow Forecast (30 Days)</h3><div class="chart-container"><canvas id="cashFlowChart"></canvas></div></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">AP by Status</h3><div class="chart-container"><canvas id="apStatusChart"></canvas></div></div></div><div class="mt-6 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">AR Aging</h3><div class="chart-container"><canvas id="arAgingChart"></canvas></div></div></div></div>
+                <div id="ap-content" class="tab-content"><div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">AP Management</h2><div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Total AP</p><p id="ap-total-kpi" class="text-2xl font-bold text-gray-900"></p></div><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Past Due</p><p id="ap-pastdue-kpi" class="text-2xl font-bold text-red-600"></p></div></div><div class="bg-white rounded-xl shadow-sm border overflow-hidden"><div class="p-4 border-b"><h3 class="font-semibold text-gray-800">Open Invoices</h3></div><div class="overflow-x-auto"><table class="w-full text-sm" id="ap-table"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Invoice #</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Vendor</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Amount</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Due Date</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Actions</th></tr></thead><tbody id="ap-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div></div></div>
+                <div id="ar-content" class="tab-content"><div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">AR Management</h2><div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Total AR</p><p id="ar-total-kpi" class="text-2xl font-bold text-gray-900"></p></div><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Overdue</p><p id="ar-overdue-kpi" class="text-2xl font-bold text-red-600"></p></div></div><div class="bg-white rounded-xl shadow-sm border overflow-hidden"><div class="p-4 border-b"><h3 class="font-semibold text-gray-800">Open Receivables</h3></div><div class="overflow-x-auto"><table class="w-full text-sm" id="ar-table"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Invoice #</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Customer</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Amount</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Due Date</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th></tr></thead><tbody id="ar-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div></div></div>
+                <div id="treasury-content" class="tab-content"></div>
+                <div id="master-data-content" class="tab-content"></div>
+                <div id="financials-content" class="tab-content"></div>
+                <div id="process-content" class="tab-content"></div>
+                <div id="governance-content" class="tab-content"></div>
+            </main>
+            <button id="chat-btn" class="floating-chat-btn bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-transform hover:scale-110"><i class="fas fa-comments fa-lg"></i></button>
+        </div>
+        <!-- Modal Container -->
+        <div id="modal-container"></div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- SCRIPT SCOPE VARIABLES & CONFIG --- //
+        let exchangeRates = {};
+        const BASE_CURRENCY = 'EUR';
+        const userProfiles = {
+            admin: { name: 'Sarah Johnson', role: 'CFO • Admin', avatar: 'S', permissions: { canEditRoles: true } },
+            finance: { name: 'Michael Chen', role: 'Controller • Finance', avatar: 'M', permissions: { canEditRoles: false } },
+            approver: { name: 'Jennifer Lee', role: 'Manager • Approver', avatar: 'J', permissions: { canEditRoles: false } }
+        };
+        let currentUser = {};
+        let charts = {}; // Object to hold all chart instances
+
+        // --- DATA MOCKING --- //
+        const masterData = { '1000': { vendors: [ { id: 'V-1001', name: 'Global Supplies Inc.', address: 'Berlin, Germany', terms: '2/10 net 30', status: 'Active' }, { id: 'V-1002', name: 'Tech Components LLC', address: 'Munich, Germany', terms: 'Net 30', status: 'Active' }, ], customers: [ { id: 'C-2001', name: 'Enterprise Corp', address: 'Frankfurt, Germany', creditLimit: '€500,000', status: 'Active' }, ] }, '2000': { vendors: [ { id: 'V-3001', name: 'US Office Solutions', address: 'New York, USA', terms: 'Net 45', status: 'Active' }, ], customers: [ { id: 'C-4001', name: 'Innovate Tech USA', address: 'San Francisco, USA', creditLimit: '$750,000', status: 'Active' }, ] }, '3000': { vendors: [ { id: 'V-5001', name: 'UK Logistics', address: 'London, UK', terms: 'Net 60', status: 'Active' }, ], customers: [ { id: 'C-6001', name: 'British Retail Group', address: 'Manchester, UK', creditLimit: '£400,000', status: 'On Hold' }, ] } };
+        const apInvoices = [ { id: 'INV-10892', vendor: 'Global Supplies Inc.', amount: 142500, currency: 'EUR', dueDate: '2025-08-25', stage: 'Payment Execution', status: 'Completed', po: 'PO-456', gr: 'GR-789' }, { id: 'INV-10893', vendor: 'Tech Components LLC', amount: 89200, currency: 'EUR', dueDate: '2025-08-10', stage: 'Approval Routing', status: 'Past Due', po: 'PO-457', gr: 'GR-790' }, { id: 'INV-10894', vendor: 'US Office Solutions', amount: 45800, currency: 'USD', dueDate: '2025-08-30', stage: 'Data Validation', status: 'Disputed', po: 'PO-458', gr: 'GR-791' }, ];
+        const arReceivables = [ { id: 'AR-20543', customer: 'Enterprise Corp', amount: 289500, currency: 'EUR', dueDate: '2025-08-12', stage: 'Payment Collection', status: 'Overdue', so: 'SO-112'}, { id: 'AR-20544', customer: 'British Retail Group', amount: 156800, currency: 'GBP', dueDate: '2025-09-18', stage: 'Invoice Delivery', status: 'Current', so: 'SO-113'}, { id: 'AR-20545', customer: 'Innovate Tech USA', amount: 98750, currency: 'USD', dueDate: '2025-09-22', stage: 'Invoice Creation', status: 'Current', so: 'SO-114'}, ];
+        const processFlows = { ap: { name: "Procure-to-Pay (P2P) Workflow", documents: apInvoices, steps: [ { name: 'Requisition', id: 'Requisition', description: 'Request for goods or services is created.' }, { name: 'Purchase Order', id: 'Purchase Order', description: 'PO is created and sent to the vendor.' }, { name: 'Goods/Services Receipt', id: 'Receipt', description: 'Confirmation of goods/services received.' }, { name: 'Invoice Receipt & Validation', id: 'Data Validation', description: 'Invoice is received and validated against PO/receipt.' }, { name: 'Approval Routing', id: 'Approval Routing', description: 'Invoice is routed for internal approval.' }, { name: 'Payment Scheduling', id: 'Payment Scheduling', description: 'Invoice is scheduled for payment.' }, { name: 'Payment Execution', id: 'Payment Execution', description: 'Payment is executed and recorded.' }, ] }, ar: { name: "Order-to-Cash (O2C) Workflow", documents: arReceivables, steps: [ { name: 'Sales Order', id: 'Sales Order', description: 'Customer order is received.' }, { name: 'Fulfillment & Delivery', id: 'Fulfillment', description: 'Goods are shipped or services delivered.' }, { name: 'Invoice Creation', id: 'Invoice Creation', description: 'Invoice is generated.' }, { name: 'Invoice Delivery', id: 'Invoice Delivery', description: 'The invoice is sent to the customer.' }, { name: 'Payment Collection', id: 'Payment Collection', description: 'Collection activities for outstanding invoices.' }, { name: 'Cash Application', id: 'Cash Application', description: 'Payment is matched to invoices.' }, ] } };
+        
+        // --- UTILITY FUNCTIONS --- //
+        const formatCurrency = (amount, currency) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+        const convertToBASE = (amount, currency) => {
+            if (currency === BASE_CURRENCY || !exchangeRates[currency] || exchangeRates[currency] === 0) return amount;
+            return amount / exchangeRates[currency];
+        };
+        async function fetchExchangeRates() {
+            const statusEl = document.getElementById('currency-rates-status');
+            if(statusEl) statusEl.innerHTML = `<i class="fas fa-sync fa-spin mr-1"></i>Fetching rates...`;
+            try {
+                const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${BASE_CURRENCY}`);
+                if (!response.ok) throw new Error('API limit likely reached');
+                const data = await response.json();
+                exchangeRates = data.rates;
+                if(statusEl) statusEl.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i>Rates updated`;
+            } catch (error) {
+                console.warn("Using fallback exchange rates:", error);
+                if(statusEl) statusEl.innerHTML = `<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>Using fallback rates`;
+                exchangeRates = { 'USD': 1.08, 'GBP': 0.85, 'JPY': 165.2, 'INR': 90.5, 'EUR': 1, 'CNY': 7.8, 'AUD': 1.6 };
+            }
+        }
+        function openModal(title, content) {
+            const modalHTML = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"><header class="p-4 border-b flex justify-between items-center"><h3 class="text-lg font-semibold">${title}</h3><button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button></header><div class="p-6 overflow-y-auto">${content}</div></div></div>`;
+            document.getElementById('modal-container').innerHTML = modalHTML;
+            document.querySelector('.close-modal').addEventListener('click', closeModal);
+            document.querySelector('.modal-backdrop').addEventListener('click', (e) => { if(e.target === e.currentTarget) closeModal(); });
+        }
+        function closeModal() { document.getElementById('modal-container').innerHTML = ''; }
+
+        // --- RENDER FUNCTIONS --- //
+        function initDashboardCharts() {
+            if (charts.cashFlowChart) charts.cashFlowChart.destroy();
+            if (charts.apStatusChart) charts.apStatusChart.destroy();
+            if (charts.arAgingChart) charts.arAgingChart.destroy();
+
+            const cashFlowCtx = document.getElementById('cashFlowChart')?.getContext('2d');
+            if (cashFlowCtx) {
+                charts.cashFlowChart = new Chart(cashFlowCtx, { type: 'line', data: { labels: Array.from({length: 30}, (_, i) => `Day ${i + 1}`), datasets: [{ label: `Projected Cash Flow (${BASE_CURRENCY})`, data: Array.from({length: 30}, (_,i) => (12.4 + (i*0.1) + Math.random() * 0.5 - 0.25) * 1000000), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: value => formatCurrency(value, BASE_CURRENCY) } } } } });
+            }
+            const apStatusCtx = document.getElementById('apStatusChart')?.getContext('2d');
+            if (apStatusCtx) {
+                charts.apStatusChart = new Chart(apStatusCtx, { type: 'doughnut', data: { labels: ['Completed', 'Past Due', 'Disputed'], datasets: [{ data: [apInvoices.filter(i=>i.status==='Completed').length, apInvoices.filter(i=>i.status==='Past Due').length, apInvoices.filter(i=>i.status==='Disputed').length], backgroundColor: ['#d1d5db', '#ef4444', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+            }
+            const arAgingCtx = document.getElementById('arAgingChart')?.getContext('2d');
+            if (arAgingCtx) {
+                charts.arAgingChart = new Chart(arAgingCtx, { type: 'bar', data: { labels: ['0-30 Days', '31-60 Days', '61-90 Days', '90+ Days'], datasets: [{ label: `AR Aging (${BASE_CURRENCY})`, data: [350000, 150000, 45050, 289500], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444', '#b91c1c'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+            }
+        }
+        async function setupAIChat() {
+            const aiChatInput = document.getElementById('aiChatInput');
+            const aiChatSendButton = document.getElementById('aiChatSendButton');
+            const aiChatContainer = document.getElementById('aiChat');
+            const sendAIChat = async () => {
+                const message = aiChatInput.value.trim();
+                if (!message) return;
+                aiChatContainer.innerHTML += `<div class="flex justify-end mt-2"><div class="bg-blue-600 text-white p-2 rounded-lg max-w-xs text-sm">${message}</div></div>`;
+                aiChatInput.value = ''; 
+                aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+                
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'ai-response p-3 rounded-lg text-sm mt-2 thinking';
+                thinkingDiv.innerHTML = `<p>Thinking...</p>`;
+                aiChatContainer.appendChild(thinkingDiv);
+                aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+
+                const totalAP = apInvoices.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
+                const totalAR = arReceivables.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
+                const context = `Current financial context: Total AP is ${formatCurrency(totalAP, BASE_CURRENCY)}, Total AR is ${formatCurrency(totalAR, BASE_CURRENCY)}, Available Cash is ${formatCurrency(12400000, 'EUR')}.`;
+                const prompt = `${context} Based on this, answer the following user question: "${message}"`;
+
+                const apiKey = ""; // Will be handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                    const result = await response.json();
+                    const aiText = result.candidates[0].content.parts[0].text;
+                    thinkingDiv.innerHTML = `<p>${aiText.replace(/\n/g, '<br>')}</p>`;
+                    thinkingDiv.classList.remove('thinking');
+                } catch (error) {
+                    console.error("Gemini API call failed:", error);
+                    thinkingDiv.innerHTML = `<p>Sorry, I couldn't get a response. Please check the console for errors.</p>`;
+                    thinkingDiv.classList.remove('thinking');
+                }
+                 aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+            };
+            if (aiChatSendButton) {
+                aiChatSendButton.addEventListener('click', sendAIChat);
+                aiChatInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendAIChat());
+            }
+        }
+        function setupSubTabs(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.addEventListener('click', function(e) {
+                if (e.target.matches('.sub-tab-button')) {
+                    container.querySelectorAll('.sub-tab-button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    container.querySelectorAll('.sub-tab-content').forEach(content => content.classList.remove('active'));
+                    document.getElementById(e.target.dataset.tab).classList.add('active');
+                }
+            });
+        }
+        function renderDashboard() {
+            const totalAP = apInvoices.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
+            const totalAR = arReceivables.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
+            document.getElementById('db-cash').textContent = formatCurrency(12400000, 'EUR');
+            document.getElementById('db-ap').textContent = formatCurrency(totalAP, 'EUR');
+            document.getElementById('db-ar').textContent = formatCurrency(totalAR, 'EUR');
+            initDashboardCharts();
+            setupAIChat();
+        }
+        function renderAPTab() {
+            const totalAP = apInvoices.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
+            const pastDue = apInvoices.filter(i => i.status === 'Past Due').reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
+            document.getElementById('ap-total-kpi').textContent = formatCurrency(totalAP, BASE_CURRENCY);
+            document.getElementById('ap-pastdue-kpi').textContent = formatCurrency(pastDue, BASE_CURRENCY);
+            document.getElementById('ap-table-body').innerHTML = apInvoices.map(i => `<tr><td class="px-6 py-4">${i.id}</td><td class="px-6 py-4">${i.vendor}</td><td class="px-6 py-4 font-semibold">${formatCurrency(i.amount, i.currency)}</td><td class="px-6 py-4">${i.dueDate}</td><td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${i.status === 'Past Due' ? 'bg-red-100 text-red-800' : (i.status === 'Completed' ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800')}">${i.status}</span></td><td class="px-6 py-4"><button class="text-blue-600 hover:underline view-ap-details" data-id="${i.id}">Details</button></td></tr>`).join('');
+            document.getElementById('ap-table').addEventListener('click', e => {
+                if (e.target.classList.contains('view-ap-details')) {
+                    const invoice = apInvoices.find(i => i.id === e.target.dataset.id);
+                    const modalContent = `<div class="grid grid-cols-2 gap-4 text-sm"><div class="font-semibold text-gray-500">Vendor:</div><div>${invoice.vendor}</div><div class="font-semibold text-gray-500">Amount:</div><div>${formatCurrency(invoice.amount, invoice.currency)}</div><div class="font-semibold text-gray-500">Due Date:</div><div>${invoice.dueDate}</div><div class="font-semibold text-gray-500">Status:</div><div>${invoice.status}</div><div class="font-semibold text-gray-500">Related PO:</div><div>${invoice.po}</div><div class="font-semibold text-gray-500">Related GR:</div><div>${invoice.gr}</div></div><h4 class="font-semibold mt-6 mb-2">Approval History</h4><ul class="list-disc list-inside text-sm text-gray-600"><li>Created by Finance Team</li><li>Approved by Department Manager</li><li>Final approval by CFO</li></ul><div class="mt-6 pt-4 border-t"><button class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm draft-email-btn">✨ Draft Follow-up Email</button><div id="email-draft-container" class="mt-4 hidden"><label class="block text-sm font-medium text-gray-700">Generated Email Draft:</label><textarea id="email-draft-area" class="w-full h-40 mt-1 border-gray-300 rounded-md shadow-sm" readonly></textarea></div></div>`;
+                    openModal(`Invoice Details: ${invoice.id}`, modalContent);
+                    
+                    document.querySelector('.draft-email-btn').addEventListener('click', async function() {
+                        this.textContent = 'Drafting...';
+                        this.disabled = true;
+                        const prompt = `You are a finance professional. Draft a polite but firm follow-up email to ${invoice.vendor} regarding invoice ${invoice.id} for ${formatCurrency(invoice.amount, invoice.currency)}, which was due on ${invoice.dueDate} and is currently marked as ${invoice.status}. Keep it concise.`;
+                        const apiKey = ""; 
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                        try {
+                            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+                            if (!response.ok) throw new Error('API Error');
+                            const result = await response.json();
+                            const emailText = result.candidates[0].content.parts[0].text;
+                            document.getElementById('email-draft-area').value = emailText;
+                            document.getElementById('email-draft-container').classList.remove('hidden');
+                        } catch (error) {
+                            document.getElementById('email-draft-area').value = "Error generating email. Please try again.";
+                            document.getElementById('email-draft-container').classList.remove('hidden');
+                        } finally {
+                            this.textContent = '✨ Draft Follow-up Email';
+                            this.disabled = false;
+                        }
+                    });
+                }
+            });
+        }
+        function renderARTab() {
+            const totalAR = arReceivables.reduce((s, r) => s + convertToBASE(r.amount, r.currency), 0);
+            const overdue = arReceivables.filter(r => r.status === 'Overdue').reduce((s, r) => s + convertToBASE(r.amount, r.currency), 0);
+            document.getElementById('ar-total-kpi').textContent = formatCurrency(totalAR, BASE_CURRENCY);
+            document.getElementById('ar-overdue-kpi').textContent = formatCurrency(overdue, BASE_CURRENCY);
+            document.getElementById('ar-table-body').innerHTML = arReceivables.map(r => `<tr><td class="px-6 py-4">${r.id}</td><td class="px-6 py-4">${r.customer}</td><td class="px-6 py-4 font-semibold">${formatCurrency(r.amount, r.currency)}</td><td class="px-6 py-4">${r.dueDate}</td><td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${r.status === 'Overdue' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${r.status}</span></td></tr>`).join('');
+        }
+        function renderTreasuryTab() {
+            const bankAccounts = [ { bank: 'Deutsche Bank (DE)', currency: 'EUR', balance: 8200000 }, { bank: 'JPMorgan Chase (US)', currency: 'USD', balance: 4500000 }, { bank: 'HSBC (UK)', currency: 'GBP', balance: 2100000 }, { bank: 'MUFG Bank (JP)', currency: 'JPY', balance: 500000000 } ];
+            const totalCash = bankAccounts.reduce((sum, acc) => sum + convertToBASE(acc.balance, acc.currency), 0);
+            const container = document.getElementById('treasury-content');
+            container.innerHTML = `<div class="p-6"><div id="tradingview-widget-container" class="tradingview-widget-container mb-6"><div class="tradingview-widget-container__widget"></div></div><h2 class="text-2xl font-bold text-gray-800 mb-6">Treasury Operations</h2><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Multi-Currency Cash Position</h3><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left font-medium text-gray-500 uppercase">Bank</th><th class="px-4 py-2 text-right font-medium text-gray-500 uppercase">Balance</th><th class="px-4 py-2 text-right font-medium text-gray-500 uppercase">Balance (${BASE_CURRENCY})</th></tr></thead><tbody class="divide-y">${bankAccounts.map(acc => `<tr><td class="px-4 py-2">${acc.bank}</td><td class="px-4 py-2 text-right font-semibold">${formatCurrency(acc.balance, acc.currency)}</td><td class="px-4 py-2 text-right">${formatCurrency(convertToBASE(acc.balance, acc.currency), BASE_CURRENCY)}</td></tr>`).join('')}</tbody><tfoot class="border-t-2 font-bold"><tr class="bg-gray-50"><td class="px-4 py-2" colspan="2">Total Cash Position</td><td class="px-4 py-2 text-right">${formatCurrency(totalCash, BASE_CURRENCY)}</td></tr></tfoot></table></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">FX Hedging & Derivatives</h3><p class="text-sm text-gray-600 mb-4">Proof-of-concept for managing financial instruments to mitigate currency risk.</p><div class="text-sm"><p class="font-semibold">Open Positions:</p><ul class="list-disc list-inside text-gray-700"><li>FWD Contract: Sell $2M USD / Buy EUR @ 1.075</li><li>EUR Call Option: Buy €1M, Strike €1.10</li></ul></div><button id="model-hedge-btn" class="mt-4 w-full bg-blue-100 text-blue-700 font-semibold py-2 rounded-lg text-sm hover:bg-blue-200">Model New Hedge</button></div></div></div>`;
+            
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
+            script.async = true;
+            script.innerHTML = `{"symbols": [{"description": "EUR/USD","proName": "FX:EURUSD"},{"description": "DAX","proName": "XETR:DAX"},{"description": "S&P 500","proName": "CME_MINI:ES1!"},{"description": "Gold","proName": "COMEX:GC1!"}],"showSymbolLogo": true,"colorTheme": "light","isTransparent": false,"displayMode": "adaptive","locale": "en"}`;
+            document.getElementById('tradingview-widget-container').appendChild(script);
+
+            document.getElementById('model-hedge-btn').addEventListener('click', () => {
+                const modalContent = `<div class="space-y-4 text-sm"><p>This interactive model demonstrates how a user would create a new FX Forward contract to hedge currency exposure.</p><div><label class="block font-medium text-gray-700">Currency Pair</label><div class="flex space-x-2 mt-1"><select class="flex-1 border-gray-300 rounded-md shadow-sm"><option>EUR</option></select><select class="flex-1 border-gray-300 rounded-md shadow-sm"><option>USD</option></select></div></div><div><label class="block font-medium text-gray-700">Action</label><select class="w-full mt-1 border-gray-300 rounded-md shadow-sm"><option>Sell USD / Buy EUR</option><option>Buy USD / Sell EUR</option></select></div><div><label class="block font-medium text-gray-700">Notional Amount (USD)</label><input type="text" value="2,000,000.00" class="w-full mt-1 border-gray-300 rounded-md shadow-sm"></div><div><label class="block font-medium text-gray-700">Forward Rate</label><input type="text" value="1.0750" class="w-full mt-1 border-gray-300 rounded-md shadow-sm"></div><div><label class="block font-medium text-gray-700">Maturity Date</label><input type="date" value="2025-12-31" class="w-full mt-1 border-gray-300 rounded-md shadow-sm"></div><div class="pt-4 flex justify-end"><button class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Execute Hedge</button></div></div>`;
+                openModal('Model New FX Forward Hedge', modalContent);
+            });
+        }
+        function renderFinancialsTab() {
+            document.getElementById('financials-content').innerHTML = `<div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">Financial Reporting</h2><div class="bg-white rounded-xl shadow-sm border" id="financials-container"><div class="p-4 border-b"><nav class="flex space-x-8"><button class="sub-tab-button active pb-2 border-b-2" data-tab="balance-sheet-content">Balance Sheet</button><button class="sub-tab-button pb-2 border-b-2" data-tab="income-statement-content">Income Statement</button></nav></div><div class="p-6"><div id="balance-sheet-content" class="sub-tab-content active"><h3 class="text-lg font-semibold mb-4">Consolidated Balance Sheet (Demo)</h3><p>Balance sheet table...</p></div><div id="income-statement-content" class="sub-tab-content"><h3 class="text-lg font-semibold mb-4">Consolidated Income Statement (Demo)</h3><p>Income statement table...</p></div></div></div></div>`;
+            setupSubTabs('financials-container');
+        }
+        function renderProcessFlowTab() {
+            document.getElementById('process-content').innerHTML = `<div class="p-6"><div class="flex items-center justify-between mb-6"><h2 class="text-2xl font-bold text-gray-800">Business Process Flow</h2><select id="processSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="ap">Procure-to-Pay (P2P)</option><option value="ar">Order-to-Cash (O2C)</option></select></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 id="process-flow-title" class="font-semibold text-gray-800 mb-6"></h3><div id="process-flow-steps"></div></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Linked Documents</h3><div id="process-flow-docs" class="space-y-2"></div></div></div></div>`;
+        }
+        function renderMasterDataTab() {
+            document.getElementById('master-data-content').innerHTML = `<div class="p-6"><div class="flex items-center justify-between mb-6"><h2 class="text-2xl font-bold text-gray-800">Master Data Management</h2><select id="companyCodeSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="1000">Company Code: 1000 (Germany)</option><option value="2000">Company Code: 2000 (USA)</option><option value="3000">Company Code: 3000 (UK)</option></select></div><div class="bg-white rounded-xl shadow-sm border" id="master-data-container"><div class="border-b"><nav class="flex px-4"><button class="sub-tab-button active px-4 py-3 font-medium text-sm" data-tab="vendors-content">Vendors</button><button class="sub-tab-button px-4 py-3 font-medium text-sm" data-tab="customers-content">Customers</button></nav></div><div class="p-6"><div id="vendors-content" class="sub-tab-content active"></div><div id="customers-content" class="sub-tab-content"></div></div></div></div>`;
+            const renderTable = (cc = '1000', type = 'vendors') => { 
+                const data = masterData[cc]?.[type] || [];
+                const tableContainer = document.getElementById(`${type}-content`);
+                if (!tableContainer) return;
+                if(data.length === 0) { tableContainer.innerHTML = `<p class="text-gray-500">No data available.</p>`; return; }
+                const headers = Object.keys(data[0]).map(key => `<th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">${key}</th>`).join('');
+                const rows = data.map(row => `<tr>${Object.values(row).map(val => `<td class="px-6 py-4 whitespace-nowrap">${val}</td>`).join('')}</tr>`).join('');
+                tableContainer.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>${headers}</tr></thead><tbody class="bg-white divide-y divide-gray-200">${rows}</tbody></table></div>`;
+            };
+            renderTable('1000', 'vendors'); renderTable('1000', 'customers');
+            document.getElementById('companyCodeSelect').addEventListener('change', (e) => {
+                const activeTab = document.querySelector('#master-data-container .sub-tab-button.active').dataset.tab.replace('-content', '');
+                renderTable(e.target.value, activeTab);
+            });
+            setupSubTabs('master-data-container');
+        }
+        function renderGovernanceTab() {
+            const canEdit = currentUser.permissions.canEditRoles;
+            document.getElementById('governance-content').innerHTML = `<div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">Governance & Security</h2><div class="bg-white rounded-xl shadow-sm border" id="governance-container"><div class="p-4 border-b"><nav class="flex space-x-8"><button class="sub-tab-button active pb-2 border-b-2" data-tab="roles-content">User Roles & Permissions</button><button class="sub-tab-button pb-2 border-b-2" data-tab="api-content">API Status</button><button class="sub-tab-button pb-2 border-b-2" data-tab="audit-content">Audit Log</button></nav></div><div class="p-6"><div id="roles-content" class="sub-tab-content active"></div><div id="api-content" class="sub-tab-content"></div><div id="audit-content" class="sub-tab-content"></div></div></div></div>`;
+            setupSubTabs('governance-container');
+            document.getElementById('roles-content').innerHTML = `<h3 class="text-lg font-semibold mb-4">Role-Based Access Control</h3><div class="overflow-x-auto"><table class="w-full text-sm">...</table></div>`; 
+            document.getElementById('api-content').innerHTML = `<h3 class="text-lg font-semibold mb-4">API Connection Status</h3><div class="grid grid-cols-2 gap-4">...</div>`; 
+            document.getElementById('audit-content').innerHTML = `<h3 class="text-lg font-semibold mb-4">System Audit Log</h3><div class="font-mono text-xs bg-gray-800 text-green-400 p-4 rounded-lg h-64 overflow-y-auto">...</div>`;
+        }
+        function renderProcessFlow(processKey) {
+            const flow = processFlows[processKey];
+            const titleEl = document.getElementById('process-flow-title');
+            const stepsEl = document.getElementById('process-flow-steps');
+            const docsEl = document.getElementById('process-flow-docs');
+            if (!titleEl || !stepsEl || !docsEl) return;
+            titleEl.textContent = flow.name;
+            stepsEl.innerHTML = flow.steps.map((step, index) => `<div class="process-step" data-step-id="${step.id}" data-step="${index + 1}"><h4 class="font-semibold text-gray-700">${step.name}</h4><p class="text-sm text-gray-500">${step.description}</p></div>`).join('');
+            docsEl.innerHTML = flow.documents.map(doc => `<div class="document-link border p-3 rounded-lg cursor-pointer hover:bg-gray-50" data-doc-id="${doc.id}" data-doc-stage="${doc.stage}"><p class="font-medium text-sm">${doc.id}</p><p class="text-xs text-gray-600">${doc.vendor || doc.customer} - ${formatCurrency(doc.amount, doc.currency)}</p></div>`).join('');
+            docsEl.addEventListener('click', function(e) {
+                const link = e.target.closest('.document-link');
+                if (link) {
+                    docsEl.querySelectorAll('.document-link').forEach(l => l.classList.remove('highlighted'));
+                    link.classList.add('highlighted');
+                    const stage = link.dataset.docStage;
+                    let stageFound = false;
+                    stepsEl.querySelectorAll('.process-step').forEach(step => {
+                        step.classList.remove('active', 'completed');
+                        if (stageFound) return;
+                        if (step.dataset.stepId === stage) {
+                            step.classList.add('active');
+                            stageFound = true;
+                        } else {
+                            step.classList.add('completed');
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- MAIN APP LOGIC & EVENT LISTENERS --- //
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            if (userProfiles[username] && document.getElementById('password').value === 'password') {
+                currentUser = userProfiles[username];
+                await fetchExchangeRates();
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'flex';
+                document.getElementById('userDisplayName').textContent = currentUser.name;
+                document.getElementById('userRole').textContent = currentUser.role;
+                document.getElementById('userAvatar').src = `https://placehold.co/40x40/6366f1/ffffff?text=${currentUser.avatar}`;
+                renderDashboard();
+            } else { alert('Invalid credentials.'); }
+        });
+        document.getElementById('logoutBtn').addEventListener('click', () => { 
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        });
+        document.getElementById('main-tabs').addEventListener('click', function(e) {
+            if (e.target.matches('.tab-button')) {
+                this.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                const tabId = e.target.dataset.tab;
+                const targetContent = document.getElementById(tabId + '-content');
+                targetContent.classList.add('active');
+                
+                switch(tabId) {
+                    case 'dashboard': renderDashboard(); break;
+                    case 'ap': renderAPTab(); break;
+                    case 'ar': renderARTab(); break;
+                    case 'treasury': renderTreasuryTab(); break;
+                    case 'master-data': renderMasterDataTab(); break;
+                    case 'financials': renderFinancialsTab(); break;
+                    case 'process': 
+                        renderProcessFlowTab();
+                        renderProcessFlow('ap');
+                        document.getElementById('processSelect')?.addEventListener('change', (e) => renderProcessFlow(e.target.value));
+                        break;
+                    case 'governance': renderGovernanceTab(); break;
+                }
+            }
+        });
+    });
+    </script>
+</body>
+</html>
