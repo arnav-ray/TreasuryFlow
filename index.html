@@ -31,30 +31,114 @@
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .permission-toggle { accent-color: #3b82f6; }
         .floating-chat-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 30; }
+        .kpi-card { transition: all 0.2s ease-in-out; }
+        .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        [contenteditable="true"] { background-color: #fefce8; padding: 2px 4px; border-radius: 4px; outline: none; transition: background-color 0.3s; }
+        [contenteditable="true"]:focus { background-color: #fef9c3; box-shadow: 0 0 0 2px #3b82f6; }
+        .financial-table td:last-child { text-align: right; font-family: monospace; }
+        .financial-table .total-row { font-weight: bold; border-top: 2px solid #e5e7eb; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div id="app" class="flex h-screen flex-col">
         <!-- Login Screen -->
-        <div id="loginScreen" class="flex items-center justify-center h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
-            <div class="bg-white p-8 rounded-xl shadow-2xl w-96 transform transition-all hover:scale-105 duration-300">
-                <div class="text-center mb-8"><div class="text-4xl font-bold text-blue-600 mb-2"><i class="fas fa-water"></i> TreasuryFlow</div><p class="text-gray-600">ERP Agnostic Treasury Management Platform</p></div>
+        <div id="loginScreen" class="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 p-4">
+            <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md transform transition-all hover:scale-105 duration-300">
+                <div class="text-center mb-8">
+                    <div class="text-4xl font-bold text-blue-600 mb-2"><i class="fas fa-water"></i> TreasuryFlow</div>
+                    <p class="text-gray-600">ERP Agnostic Treasury Management Platform</p>
+                </div>
                 <div class="space-y-4">
                     <div><label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label><input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., admin"></div>
                     <div><label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label><input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., password"></div>
                     <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg hover:shadow-xl">Sign In</button>
                 </div>
-                <div class="mt-6 text-center"><p class="text-sm text-gray-500">Demo accounts:</p><div class="text-xs text-gray-400 mt-1"><p>Admin: <strong>admin</strong> / password</p><p>Finance: <strong>finance</strong> / password</p><p>Approver: <strong>approver</strong> / password</p></div></div>
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-500">Demo accounts:</p>
+                    <div class="text-xs text-gray-400 mt-1">
+                        <p>Admin: <strong>admin</strong> / password</p>
+                        <p>Finance: <strong>finance</strong> / password</p>
+                        <p>Approver: <strong>approver</strong> / password</p>
+                    </div>
+                </div>
             </div>
+            <div class="text-white text-center mt-6 max-w-2xl">
+                 <p class="text-sm text-gray-300 bg-black bg-opacity-20 p-4 rounded-lg">
+                    <strong>TreasuryFlow</strong> is a proof-of-concept demonstrating a centralized, ERP-agnostic treasury management platform. It acts as an intelligent overlay, connecting to disparate data sources to provide a single source of truth for corporate treasury operations.
+                    <br><br>
+                    <span class="font-semibold">Disclaimer:</span> This project is for educational purposes only and uses mocked data. It does not connect to any real financial systems.
+                 </p>
+            </div>
+             <footer class="absolute bottom-0 p-4 text-center text-sm text-gray-300">
+                &copy; 2025 Arnav Amal Ray | <a href="mailto:arnav@arnavray.ca" class="hover:underline text-blue-300">arnav@arnavray.ca</a>
+            </footer>
         </div>
+
 
         <!-- Main Application -->
         <div id="mainApp" class="hidden h-screen flex-col">
             <header class="bg-white shadow-sm border-b px-6 py-3"><div class="flex items-center justify-between"><div class="flex items-center"><h1 class="text-2xl font-bold text-blue-900 flex items-center"><i class="fas fa-water mr-2"></i>TreasuryFlow</h1><div class="ml-6 flex space-x-2 items-center"><span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-full flex items-center"><i class="fas fa-circle text-green-500 text-xs mr-2 animate-pulse"></i>Connected</span><div id="currency-rates-status" class="text-xs text-gray-500"></div></div></div><div class="flex items-center space-x-4"><div class="relative"><input type="text" placeholder="Search..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div><div class="flex items-center space-x-3"><div class="text-right"><p class="text-sm font-medium text-gray-800" id="userDisplayName"></p><p class="text-xs text-gray-500" id="userRole"></p></div><img src="" alt="User" id="userAvatar" class="w-10 h-10 rounded-full"><button id="logoutBtn" class="text-gray-400 hover:text-red-600 transition-colors" title="Logout"><i class="fas fa-sign-out-alt fa-lg"></i></button></div></div></div></header>
-            <div class="bg-white border-b"><nav id="main-tabs" class="flex space-x-8 px-6 overflow-x-auto"><button class="tab-button active" data-tab="dashboard"><i class="fas fa-chart-line mr-2"></i>Dashboard</button><button class="tab-button" data-tab="ap"><i class="fas fa-money-check-alt mr-2"></i>AP Management</button><button class="tab-button" data-tab="ar"><i class="fas fa-hand-holding-usd mr-2"></i>AR Management</button><button class="tab-button" data-tab="treasury"><i class="fas fa-piggy-bank mr-2"></i>Treasury Ops</button><button class="tab-button" data-tab="master-data"><i class="fas fa-database mr-2"></i>Master Data</button><button class="tab-button" data-tab="financials"><i class="fas fa-file-invoice-dollar mr-2"></i>Financials</button><button class="tab-button" data-tab="process"><i class="fas fa-sitemap mr-2"></i>Process Flow</button><button class="tab-button" data-tab="governance"><i class="fas fa-shield-alt mr-2"></i>Governance</button></nav></div>
+            <div class="bg-white border-b"><nav id="main-tabs" class="flex space-x-8 px-6 overflow-x-auto"><button class="tab-button active" data-tab="dashboard"><i class="fas fa-chart-line mr-2"></i>Dashboard</button><button class="tab-button" data-tab="ap"><i class="fas fa-money-check-alt mr-2"></i>AP Management</button><button class="tab-button" data-tab="ar"><i class="fas fa-hand-holding-usd mr-2"></i>AR Management</button><button class="tab-button" data-tab="treasury"><i class="fas fa-piggy-bank mr-2"></i>Treasury Ops</button><button class="tab-button" data-tab="master-data"><i class="fas fa-database mr-2"></i>Master Data</button><button class="tab-button" data-tab="financials"><i class="fas fa-file-invoice-dollar mr-2"></i>Financials</button><button class="tab-button" data-tab="process"><i class="fas fa-sitemap mr-2"></i>Process Flow</button><button class="tab-button" data-tab="governance"><i class="fas fa-shield-alt mr-2"></i>Governance</button><button class="tab-button" data-tab="about"><i class="fas fa-info-circle mr-2"></i>About</button></nav></div>
             <main class="flex-1 overflow-y-auto bg-gray-100">
                 <!-- All Tab Content is pre-loaded here and toggled by JS -->
-                <div id="dashboard-content" class="tab-content active"><div class="p-6"><div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6"><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">Available Cash</p><p id="db-cash" class="text-2xl font-bold text-gray-900"></p><p class="text-sm text-green-600 flex items-center mt-1"><i class="fas fa-arrow-up mr-1"></i>2.3%</p></div><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">AP Outstanding</p><p id="db-ap" class="text-2xl font-bold text-gray-900"></p><p class="text-sm text-red-600 flex items-center mt-1"><i class="fas fa-arrow-down mr-1"></i>1.2%</p></div><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">AR Outstanding</p><p id="db-ar" class="text-2xl font-bold text-gray-900"></p><p class="text-sm text-green-600 flex items-center mt-1"><i class="fas fa-arrow-up mr-1"></i>3.1%</p></div><div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-sm font-medium text-gray-600">Liquidity Risk</p><p class="text-2xl font-bold text-green-700">Low</p><p class="text-sm text-gray-500 mt-1">Optimal position</p></div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Cash Flow Forecast (30 Days)</h3><div class="chart-container"><canvas id="cashFlowChart"></canvas></div></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">AP by Status</h3><div class="chart-container"><canvas id="apStatusChart"></canvas></div></div></div><div class="mt-6 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">AR Aging</h3><div class="chart-container"><canvas id="arAgingChart"></canvas></div></div></div></div>
+                <div id="dashboard-content" class="tab-content active"><div class="p-6">
+                    <div id="kpi-grid" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="cash" data-title="Available Cash">
+                            <p class="text-sm font-medium text-gray-600">Available Cash</p>
+                            <p id="db-cash" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-green-600 flex items-center mt-1"><i class="fas fa-arrow-up mr-1"></i>2.3%</p>
+                        </div>
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="ap" data-title="AP Outstanding">
+                            <p class="text-sm font-medium text-gray-600">AP Outstanding</p>
+                            <p id="db-ap" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-red-600 flex items-center mt-1"><i class="fas fa-arrow-down mr-1"></i>1.2%</p>
+                        </div>
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="ar" data-title="AR Outstanding">
+                            <p class="text-sm font-medium text-gray-600">AR Outstanding</p>
+                            <p id="db-ar" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-green-600 flex items-center mt-1"><i class="fas fa-arrow-up mr-1"></i>3.1%</p>
+                        </div>
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="op-liq" data-title="Operational Liquidity Ratio">
+                            <p class="text-sm font-medium text-gray-600">Operational Liquidity</p>
+                            <p id="db-wc" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-gray-500 mt-1">(Cash+AR)/AP</p>
+                        </div>
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="dso" data-title="Days Sales Outstanding (DSO)">
+                            <p class="text-sm font-medium text-gray-600">Days Sales Outstanding</p>
+                            <p id="db-dso" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-gray-500 flex items-center mt-1">Target: 45 days</p>
+                        </div>
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="dpo" data-title="Days Payable Outstanding (DPO)">
+                            <p class="text-sm font-medium text-gray-600">Days Payable Outstanding</p>
+                            <p id="db-dpo" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-gray-500 flex items-center mt-1">Target: 40 days</p>
+                        </div>
+                        <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="ccc" data-title="Cash Conversion Cycle (CCC)">
+                            <p class="text-sm font-medium text-gray-600">Cash Conversion Cycle</p>
+                            <p id="db-ccc" class="text-2xl font-bold text-gray-900"></p>
+                            <p class="text-sm text-green-600 flex items-center mt-1">Efficient</p>
+                        </div>
+                         <div class="kpi-card bg-white p-4 rounded-xl shadow-sm border cursor-pointer" data-kpi="risk" data-title="Liquidity Risk">
+                            <p class="text-sm font-medium text-gray-600">Liquidity Risk</p>
+                            <p class="text-2xl font-bold text-green-700">Low</p>
+                            <p class="text-sm text-gray-500 mt-1">Optimal position</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border">
+                            <h3 class="font-semibold text-gray-800 mb-4">Cash Flow Forecast (30 Days)</h3>
+                            <div class="chart-container"><canvas id="cashFlowChart"></canvas></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border">
+                            <h3 class="font-semibold text-gray-800 mb-4">AP by Status</h3>
+                            <div class="chart-container"><canvas id="apStatusChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 bg-white p-6 rounded-xl shadow-sm border">
+                        <h3 class="font-semibold text-gray-800 mb-4">AR Aging</h3>
+                        <div class="chart-container"><canvas id="arAgingChart"></canvas></div>
+                    </div>
+                </div></div>
                 <div id="ap-content" class="tab-content"><div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">AP Management</h2><div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Total AP</p><p id="ap-total-kpi" class="text-2xl font-bold text-gray-900"></p></div><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Past Due</p><p id="ap-pastdue-kpi" class="text-2xl font-bold text-red-600"></p></div></div><div class="bg-white rounded-xl shadow-sm border overflow-hidden"><div class="p-4 border-b"><h3 class="font-semibold text-gray-800">Open Invoices</h3></div><div class="overflow-x-auto"><table class="w-full text-sm" id="ap-table"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Invoice #</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Vendor</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Amount</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Due Date</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Actions</th></tr></thead><tbody id="ap-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div></div></div>
                 <div id="ar-content" class="tab-content"><div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">AR Management</h2><div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6"><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Total AR</p><p id="ar-total-kpi" class="text-2xl font-bold text-gray-900"></p></div><div class="bg-white p-4 rounded-xl shadow-sm border text-center"><p class="text-sm font-medium text-gray-600">Overdue</p><p id="ar-overdue-kpi" class="text-2xl font-bold text-red-600"></p></div></div><div class="bg-white rounded-xl shadow-sm border overflow-hidden"><div class="p-4 border-b"><h3 class="font-semibold text-gray-800">Open Receivables</h3></div><div class="overflow-x-auto"><table class="w-full text-sm" id="ar-table"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Invoice #</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Customer</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Amount</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Due Date</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th></tr></thead><tbody id="ar-table-body" class="bg-white divide-y divide-gray-200"></tbody></table></div></div></div></div>
                 <div id="treasury-content" class="tab-content"></div>
@@ -62,8 +146,49 @@
                 <div id="financials-content" class="tab-content"></div>
                 <div id="process-content" class="tab-content"></div>
                 <div id="governance-content" class="tab-content"></div>
+                <div id="about-content" class="tab-content">
+                    <div class="p-6 max-w-4xl mx-auto">
+                        <div class="bg-white p-8 rounded-xl shadow-sm border">
+                            <h2 class="text-3xl font-bold text-blue-900 mb-4 text-center">About TreasuryFlow</h2>
+                            <p class="text-center text-gray-600 mb-8">A conceptual platform designed to unify and streamline corporate treasury operations.</p>
+                            
+                            <div class="space-y-8">
+                                <div>
+                                    <h3 class="text-xl font-semibold text-gray-800 mb-3 border-b pb-2"><i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>The Problem: Fragmented Treasury Operations</h3>
+                                    <p class="text-gray-700 leading-relaxed">
+                                        Corporate treasury departments in large organizations often face significant challenges. They manage numerous bank accounts across different countries, handle multiple currencies, and interact with various Enterprise Resource Planning (ERP) systems (like SAP, Oracle, etc.). This leads to a fragmented data landscape, heavy reliance on manual processes and spreadsheets, a high risk of operational errors, and a critical lack of real-time visibility into the company's global cash position. Consequently, strategic financial decisions are often based on outdated or incomplete information.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 class="text-xl font-semibold text-gray-800 mb-3 border-b pb-2"><i class="fas fa-lightbulb mr-2 text-green-500"></i>The Solution: A Unified, Agnostic Platform</h3>
+                                    <p class="text-gray-700 leading-relaxed mb-4">
+                                        <strong>TreasuryFlow</strong> is a proof-of-concept that demonstrates a centralized, ERP-agnostic treasury management platform. It acts as an intelligent overlay, connecting to disparate data sources to provide a single source of truth. By consolidating data and automating key workflows, it empowers finance teams with the clarity and tools needed for effective treasury management.
+                                    </p>
+                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                                        <li><strong>Unified Dashboard:</strong> A holistic, real-time view of cash positions, payables, and receivables across the entire organization.</li>
+                                        <li><strong>Process Visualization:</strong> Clear, interactive visualizations of complex workflows like Procure-to-Pay (P2P) and Order-to-Cash (O2C), linking documents to specific process stages.</li>
+                                        <li><strong>ERP Agnostic:</strong> Designed to integrate with any underlying ERP system, eliminating the need for costly and disruptive system migrations. It sits on top of existing infrastructure.</li>
+                                        <li><strong>AI-Powered Insights:</strong> Utilizes generative AI to provide contextual analysis, forecast cash flows, and even draft communications, turning raw data into actionable intelligence.</li>
+                                        <li><strong>Enhanced Governance:</strong> Implements robust role-based access controls and provides comprehensive audit trails to ensure security and compliance.</li>
+                                    </ul>
+                                </div>
+                                
+                                <div>
+                                     <h3 class="text-xl font-semibold text-gray-800 mb-3 border-b pb-2"><i class="fas fa-info-circle mr-2 text-blue-500"></i>Disclaimer</h3>
+                                     <p class="text-sm text-gray-600 bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                                        This is a proof-of-concept project created for educational and demonstrational purposes only. It utilizes mocked data and is not intended for use in a live production environment. The AI features are powered by Google's Gemini API and may require a valid API key to function. This platform does not connect to any real bank accounts or ERP systems.
+                                     </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </main>
             <button id="chat-btn" class="floating-chat-btn bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-transform hover:scale-110"><i class="fas fa-comments fa-lg"></i></button>
+            <footer class="bg-white border-t p-4 text-center text-sm text-gray-500">
+                &copy; 2025 Arnav Amal Ray | <a href="mailto:arnav@arnavray.ca" class="hover:underline text-blue-600">arnav@arnavray.ca</a>
+            </footer>
         </div>
         <!-- Modal Container -->
         <div id="modal-container"></div>
@@ -89,7 +214,14 @@
         const processFlows = { ap: { name: "Procure-to-Pay (P2P) Workflow", documents: apInvoices, steps: [ { name: 'Requisition', id: 'Requisition', description: 'Request for goods or services is created.' }, { name: 'Purchase Order', id: 'Purchase Order', description: 'PO is created and sent to the vendor.' }, { name: 'Goods/Services Receipt', id: 'Receipt', description: 'Confirmation of goods/services received.' }, { name: 'Invoice Receipt & Validation', id: 'Data Validation', description: 'Invoice is received and validated against PO/receipt.' }, { name: 'Approval Routing', id: 'Approval Routing', description: 'Invoice is routed for internal approval.' }, { name: 'Payment Scheduling', id: 'Payment Scheduling', description: 'Invoice is scheduled for payment.' }, { name: 'Payment Execution', id: 'Payment Execution', description: 'Payment is executed and recorded.' }, ] }, ar: { name: "Order-to-Cash (O2C) Workflow", documents: arReceivables, steps: [ { name: 'Sales Order', id: 'Sales Order', description: 'Customer order is received.' }, { name: 'Fulfillment & Delivery', id: 'Fulfillment', description: 'Goods are shipped or services delivered.' }, { name: 'Invoice Creation', id: 'Invoice Creation', description: 'Invoice is generated.' }, { name: 'Invoice Delivery', id: 'Invoice Delivery', description: 'The invoice is sent to the customer.' }, { name: 'Payment Collection', id: 'Payment Collection', description: 'Collection activities for outstanding invoices.' }, { name: 'Cash Application', id: 'Cash Application', description: 'Payment is matched to invoices.' }, ] } };
         
         // --- UTILITY FUNCTIONS --- //
-        const formatCurrency = (amount, currency) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+        const formatCurrency = (amount, currency, digits = 2) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(amount);
+        const parseLocalFloat = (s) => {
+            s = String(s).replace(/[^0-9.,-]+/g, "");
+            if (s.match(/[,.]\d{3}/) && !s.match(/[,.]\d{1,2}$/)) { // Handles 1.234.567,89
+                s = s.replace(/[.,](?=\d{3})/g, '');
+            }
+            return parseFloat(s.replace(',', '.'));
+        };
         const convertToBASE = (amount, currency) => {
             if (currency === BASE_CURRENCY || !exchangeRates[currency] || exchangeRates[currency] === 0) return amount;
             return amount / exchangeRates[currency];
@@ -110,7 +242,7 @@
             }
         }
         function openModal(title, content) {
-            const modalHTML = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"><header class="p-4 border-b flex justify-between items-center"><h3 class="text-lg font-semibold">${title}</h3><button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button></header><div class="p-6 overflow-y-auto">${content}</div></div></div>`;
+            const modalHTML = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"><header class="p-4 border-b flex justify-between items-center"><h3 class="text-lg font-semibold">${title}</h3><button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button></header><div class="p-6 overflow-y-auto">${content}</div></div></div>`;
             document.getElementById('modal-container').innerHTML = modalHTML;
             document.querySelector('.close-modal').addEventListener('click', closeModal);
             document.querySelector('.modal-backdrop').addEventListener('click', (e) => { if(e.target === e.currentTarget) closeModal(); });
@@ -136,6 +268,60 @@
                 charts.arAgingChart = new Chart(arAgingCtx, { type: 'bar', data: { labels: ['0-30 Days', '31-60 Days', '61-90 Days', '90+ Days'], datasets: [{ label: `AR Aging (${BASE_CURRENCY})`, data: [350000, 150000, 45050, 289500], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444', '#b91c1c'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
             }
         }
+        
+        function openKpiModal(kpiId, title) {
+            const kpiRecommendations = {
+                cash: { good: 'A strong cash position provides excellent liquidity and flexibility. Consider deploying excess cash into short-term, low-risk investments to earn yield.', bad: 'A low cash balance can signal liquidity risk. Review upcoming payables and consider drawing on credit facilities or accelerating receivables collection.' },
+                ap: { good: 'Low AP indicates timely payments to suppliers, maintaining good relationships. Ensure you are still taking advantage of favorable payment terms.', bad: 'High or rising AP could strain supplier relationships and may incur late fees. Analyze payment cycles and prioritize critical vendors.' },
+                ar: { good: 'Low AR suggests efficient collection processes. Monitor to ensure credit terms are not too restrictive, which could impact sales.', bad: 'High AR ties up working capital and increases the risk of bad debt. Strengthen collection efforts and review credit policies for high-risk customers.' },
+                'op-liq': { good: 'A high ratio indicates a very strong ability to cover supplier payments with cash and near-cash assets. This is a sign of excellent operational liquidity.', bad: 'A low ratio suggests potential difficulty in meeting short-term supplier obligations without relying on other assets or financing.' },
+                dso: { good: 'A low DSO means you are collecting cash from customers quickly, which is great for cash flow. Ensure your terms are competitive.', bad: 'A high DSO indicates slow collections, tying up cash in receivables. This could be due to lenient credit terms or inefficient collection processes.' },
+                dpo: { good: 'A high DPO means the company is using its cash for longer before paying suppliers, which can be a cheap form of financing. However, stretching it too far can damage supplier relations.', bad: 'A low DPO suggests you are paying bills very quickly, which might not be the most efficient use of cash if it means missing out on using that capital for longer.' },
+                ccc: { good: 'A short or negative CCC is excellent. It means the company needs less time to convert its investments into cash, indicating operational efficiency.', bad: 'A long CCC means cash is tied up in the operating cycle for longer. Look for ways to speed up receivables collection or manage inventory more effectively.' }
+            };
+
+            const recommendations = kpiRecommendations[kpiId] || { good: 'Data indicates a positive trend.', bad: 'Data indicates a negative trend. Further analysis is recommended.' };
+            const modalContent = `
+                <div class="chart-container mb-6"><canvas id="kpiTrendChart"></canvas></div>
+                <div>
+                    <h4 class="font-semibold text-lg mb-3">Recommendations</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
+                            <h5 class="font-semibold text-green-800 mb-2 flex items-center"><i class="fas fa-check-circle mr-2"></i>Positive Scenario</h5>
+                            <p class="text-gray-700">${recommendations.good}</p>
+                        </div>
+                        <div class="bg-red-50 border border-red-200 p-4 rounded-lg">
+                            <h5 class="font-semibold text-red-800 mb-2 flex items-center"><i class="fas fa-exclamation-triangle mr-2"></i>Negative Scenario</h5>
+                            <p class="text-gray-700">${recommendations.bad}</p>
+                        </div>
+                    </div>
+                </div>`;
+            openModal(`${title} (6-Month Trend)`, modalContent);
+
+            // Mock data for the trend chart based on KPI
+            let chartData, chartLabel, borderColor;
+            const labels = ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
+            switch(kpiId) {
+                case 'cash': chartData = [11.8, 12.1, 12.0, 12.5, 12.3, 12.4]; chartLabel = `Cash Balance (in millions ${BASE_CURRENCY})`; borderColor = '#10b981'; break;
+                case 'ap': chartData = [280, 295, 290, 275, 285, 278]; chartLabel = `AP Outstanding (in thousands ${BASE_CURRENCY})`; borderColor = '#ef4444'; break;
+                case 'ar': chartData = [510, 525, 515, 530, 540, 535]; chartLabel = `AR Outstanding (in thousands ${BASE_CURRENCY})`; borderColor = '#3b82f6'; break;
+                case 'op-liq': chartData = [45.1, 46.2, 45.5, 47.3, 46.8, 47.8]; chartLabel = `Operational Liquidity Ratio`; borderColor = '#14b8a6'; break;
+                case 'dso': chartData = [48, 47, 46, 45, 46, 45]; chartLabel = `DSO (in days)`; borderColor = '#f97316'; break;
+                case 'dpo': chartData = [38, 39, 40, 39, 38, 39]; chartLabel = `DPO (in days)`; borderColor = '#8b5cf6'; break;
+                case 'ccc': chartData = [40, 38, 36, 36, 38, 37]; chartLabel = `CCC (in days)`; borderColor = '#65a30d'; break;
+                default: chartData = [10, 20, 15, 25, 20, 30]; chartLabel = 'Trend'; borderColor = '#6b7280';
+            }
+
+            const kpiTrendCtx = document.getElementById('kpiTrendChart')?.getContext('2d');
+            if (kpiTrendCtx) {
+                new Chart(kpiTrendCtx, {
+                    type: 'line',
+                    data: { labels: labels, datasets: [{ label: chartLabel, data: chartData, borderColor: borderColor, backgroundColor: borderColor.replace(')', ', 0.1)'), tension: 0.3, fill: true }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
         async function setupAIChat() {
             const aiChatInput = document.getElementById('aiChatInput');
             const aiChatSendButton = document.getElementById('aiChatSendButton');
@@ -193,15 +379,33 @@
                     e.target.classList.add('active');
                     container.querySelectorAll('.sub-tab-content').forEach(content => content.classList.remove('active'));
                     document.getElementById(e.target.dataset.tab).classList.add('active');
+                    // FIX: Recalculate financials when switching between IFRS and GAAP tabs
+                    if (e.target.dataset.tab.includes('ifrs') || e.target.dataset.tab.includes('gaap') || e.target.dataset.tab.includes('nwc')) {
+                        recalculateFinancials();
+                    }
                 }
             });
         }
         function renderDashboard() {
             const totalAP = apInvoices.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
             const totalAR = arReceivables.reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
-            document.getElementById('db-cash').textContent = formatCurrency(12400000, 'EUR');
+            const availableCash = 12400000;
+            
+            // Mock KPI calculations
+            const dso = 45;
+            const dpo = 39;
+            const dio = 32; // Mock Days Inventory Outstanding
+            const ccc = dso + dio - dpo;
+            const wcRatio = totalAP > 0 ? ((availableCash + totalAR) / totalAP).toFixed(2) : 'N/A';
+
+            document.getElementById('db-cash').textContent = formatCurrency(availableCash, 'EUR');
             document.getElementById('db-ap').textContent = formatCurrency(totalAP, 'EUR');
             document.getElementById('db-ar').textContent = formatCurrency(totalAR, 'EUR');
+            document.getElementById('db-wc').textContent = wcRatio;
+            document.getElementById('db-dso').textContent = `${dso} days`;
+            document.getElementById('db-dpo').textContent = `${dpo} days`;
+            document.getElementById('db-ccc').textContent = `${ccc} days`;
+            
             initDashboardCharts();
             setupAIChat();
         }
@@ -267,8 +471,43 @@
             });
         }
         function renderFinancialsTab() {
-            document.getElementById('financials-content').innerHTML = `<div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">Financial Reporting</h2><div class="bg-white rounded-xl shadow-sm border" id="financials-container"><div class="p-4 border-b"><nav class="flex space-x-8"><button class="sub-tab-button active pb-2 border-b-2" data-tab="balance-sheet-content">Balance Sheet</button><button class="sub-tab-button pb-2 border-b-2" data-tab="income-statement-content">Income Statement</button></nav></div><div class="p-6"><div id="balance-sheet-content" class="sub-tab-content active"><h3 class="text-lg font-semibold mb-4">Consolidated Balance Sheet (Demo)</h3><p>Balance sheet table...</p></div><div id="income-statement-content" class="sub-tab-content"><h3 class="text-lg font-semibold mb-4">Consolidated Income Statement (Demo)</h3><p>Income statement table...</p></div></div></div></div>`;
+            document.getElementById('financials-content').innerHTML = `
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Financial Reporting & Analysis</h2>
+                        <div class="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <div>
+                                <strong>Note:</strong> Fields highlighted in yellow are editable for this demo.
+                                <div class="text-xs">In a live environment, these values would be populated automatically from the ERP via API.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border" id="financials-container">
+                        <div class="p-4 border-b">
+                            <nav class="flex space-x-8">
+                                <button class="sub-tab-button active pb-2 border-b-2" data-tab="ifrs-content">IFRS View</button>
+                                <button class="sub-tab-button pb-2 border-b-2" data-tab="gaap-content">Local GAAP View</button>
+                                <button class="sub-tab-button pb-2 border-b-2" data-tab="nwc-content">Credit & Ratio Analysis</button>
+                            </nav>
+                        </div>
+                        <div class="p-6">
+                            <div id="ifrs-content" class="sub-tab-content active"></div>
+                            <div id="gaap-content" class="sub-tab-content"></div>
+                            <div id="nwc-content" class="sub-tab-content"></div>
+                        </div>
+                    </div>
+                </div>`;
             setupSubTabs('financials-container');
+            renderFinancialStatements('ifrs');
+            renderFinancialStatements('gaap');
+            renderNwcTab();
+            
+            document.getElementById('financials-container').addEventListener('input', (e) => {
+                if(e.target.isContentEditable) {
+                    recalculateFinancials();
+                }
+            });
         }
         function renderProcessFlowTab() {
             document.getElementById('process-content').innerHTML = `<div class="p-6"><div class="flex items-center justify-between mb-6"><h2 class="text-2xl font-bold text-gray-800">Business Process Flow</h2><select id="processSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="ap">Procure-to-Pay (P2P)</option><option value="ar">Order-to-Cash (O2C)</option></select></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 id="process-flow-title" class="font-semibold text-gray-800 mb-6"></h3><div id="process-flow-steps"></div></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Linked Documents</h3><div id="process-flow-docs" class="space-y-2"></div></div></div></div>`;
@@ -328,6 +567,254 @@
                 }
             });
         }
+        
+        // --- FINANCIALS TAB LOGIC --- //
+        function renderFinancialStatements(standard) {
+            const container = document.getElementById(`${standard}-content`);
+            if (!container) return;
+            // More detailed mock data
+            const isData = { revenue: 52000000, cogs: 31000000, sga: 12000000, depr: 2500000, interest: 850000, tax: 1950000 };
+            const bsData = { cash: 12400000, ar: 535000, inventory: 310000, gross_ppe: 42000000, acc_depr: 14000000, goodwill: 4500000, ap: 278000, accrued_exp: 450000, provisions: 120000, shortTermDebt: 1500000, longTermDebt: 12000000, deferred_tax: 950000, commonStock: 10000000 };
+            
+            if (standard === 'gaap') {
+                isData.sga -= 500000; 
+                bsData.goodwill += 500000;
+            }
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Consolidated Income Statement (${standard.toUpperCase()})</h3>
+                        <table class="w-full text-sm financial-table" id="is-table-${standard}">
+                            <tbody>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Total sales revenue (User Input)"></i>Revenue</td><td id="is-revenue-${standard}" contenteditable="true">${formatCurrency(isData.revenue, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Cost of Goods Sold (User Input)"></i>Cost of Goods Sold</td><td id="is-cogs-${standard}" contenteditable="true">${formatCurrency(isData.cogs, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Gross Profit</td><td id="is-gross-profit-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Selling, General & Administrative Expenses (User Input)"></i>SG&A Expenses</td><td id="is-sga-${standard}" contenteditable="true">${formatCurrency(isData.sga, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Depreciation & Amortization (User Input)"></i>Depreciation & Amortization</td><td id="is-depr-${standard}" contenteditable="true">${formatCurrency(isData.depr, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Operating Income (EBIT)</td><td id="is-ebit-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Interest Expense on Debt (User Input)"></i>Interest Expense</td><td id="is-interest-${standard}" contenteditable="true">${formatCurrency(isData.interest, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Earnings Before Tax (EBT)</td><td id="is-ebt-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Income Tax Expense (User Input)"></i>Taxes</td><td id="is-tax-${standard}" contenteditable="true">${formatCurrency(isData.tax, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Net Income</td><td id="is-net-income-${standard}"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Consolidated Balance Sheet (${standard.toUpperCase()})</h3>
+                        <table class="w-full text-sm financial-table" id="bs-table-${standard}">
+                            <tbody>
+                                <tr class="font-semibold bg-gray-50"><td colspan="2">Assets</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Cash and Cash Equivalents (User Input)"></i>Cash</td><td id="bs-cash-${standard}" contenteditable="true">${formatCurrency(bsData.cash, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Accounts Receivable (User Input)"></i>Accounts Receivable</td><td id="bs-ar-${standard}" contenteditable="true">${formatCurrency(bsData.ar, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Inventory (User Input)"></i>Inventory</td><td id="bs-inventory-${standard}" contenteditable="true">${formatCurrency(bsData.inventory, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Total Current Assets</td><td id="bs-current-assets-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Original cost of PP&E (User Input)"></i>Gross PP&E</td><td id="bs-gross-ppe-${standard}" contenteditable="true">${formatCurrency(bsData.gross_ppe, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Total accumulated depreciation (User Input)"></i>(-) Accumulated Depreciation</td><td id="bs-acc-depr-${standard}" contenteditable="true">${formatCurrency(bsData.acc_depr, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Net PP&E</td><td id="bs-net-ppe-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Goodwill and Intangibles (User Input)"></i>Goodwill</td><td id="bs-goodwill-${standard}" contenteditable="true">${formatCurrency(bsData.goodwill, 'EUR', 0)}</td></tr>
+                                <tr class="total-row bg-blue-50"><td>Total Assets</td><td id="bs-total-assets-${standard}"></td></tr>
+                                
+                                <tr class="font-semibold bg-gray-50"><td colspan="2" class="pt-4">Liabilities & Equity</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Accounts Payable (User Input)"></i>Accounts Payable</td><td id="bs-ap-${standard}" contenteditable="true">${formatCurrency(bsData.ap, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Expenses incurred but not yet paid (User Input)"></i>Accrued Expenses</td><td id="bs-accrued-exp-${standard}" contenteditable="true">${formatCurrency(bsData.accrued_exp, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Estimated liability for an uncertain event (User Input)"></i>Provisions</td><td id="bs-provisions-${standard}" contenteditable="true">${formatCurrency(bsData.provisions, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Debt due within one year (User Input)"></i>Short-Term Debt</td><td id="bs-short-debt-${standard}" contenteditable="true">${formatCurrency(bsData.shortTermDebt, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Total Current Liabilities</td><td id="bs-current-liabilities-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Debt due after one year (User Input)"></i>Long-Term Debt</td><td id="bs-long-debt-${standard}" contenteditable="true">${formatCurrency(bsData.longTermDebt, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Taxes owed in future periods (User Input)"></i>Deferred Tax Liabilities</td><td id="bs-deferred-tax-${standard}" contenteditable="true">${formatCurrency(bsData.deferred_tax, 'EUR', 0)}</td></tr>
+                                <tr class="total-row"><td>Total Liabilities</td><td id="bs-total-liabilities-${standard}"></td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Common Stock / Share Capital (User Input)"></i>Common Stock</td><td id="bs-stock-${standard}" contenteditable="true">${formatCurrency(bsData.commonStock, 'EUR', 0)}</td></tr>
+                                <tr><td><i class="fas fa-info-circle text-gray-400 mr-2" title="Derived to balance the equation: Assets = Liabilities + Equity."></i>Retained Earnings</td><td id="bs-retained-earnings-${standard}"></td></tr>
+                                <tr class="total-row"><td>Total Equity</td><td id="bs-total-equity-${standard}"></td></tr>
+                                <tr class="total-row bg-blue-50"><td>Total Liabilities & Equity</td><td id="bs-total-liabilities-equity-${standard}"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderNwcTab() {
+            document.getElementById('nwc-content').innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Liquidity -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">Liquidity Ratios</h4>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <div class="flex justify-between"><span>Current Ratio:</span><strong id="ratio-current"></strong></div>
+                                <div class="flex justify-between"><span>Quick Ratio:</span><strong id="ratio-quick"></strong></div>
+                            </div>
+                        </div>
+                        <!-- Leverage -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">Leverage Ratios</h4>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <div class="flex justify-between"><span>Debt/Equity:</span><strong id="ratio-d-e"></strong></div>
+                                <div class="flex justify-between"><span>Debt/Assets:</span><strong id="ratio-d-a"></strong></div>
+                            </div>
+                        </div>
+                        <!-- Profitability -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">Profitability Ratios</h4>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <div class="flex justify-between"><span>Net Profit Margin:</span><strong id="ratio-npm"></strong></div>
+                                <div class="flex justify-between"><span>Return on Equity (ROE):</span><strong id="ratio-roe"></strong></div>
+                            </div>
+                        </div>
+                        <!-- Debt Service -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">Debt Service Ratios</h4>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <div class="flex justify-between"><span>Times Interest Earned:</span><strong id="ratio-tie"></strong></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Credit Assessment Summary</h3>
+                        <div class="bg-white border p-4 rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead class="text-left">
+                                    <tr class="border-b">
+                                        <th class="py-2 font-medium">Metric</th>
+                                        <th class="py-2 font-medium text-right">Result</th>
+                                        <th class="py-2 font-medium text-center">Interpretation</th>
+                                        <th class="py-2 font-medium">Scenario Analysis & Recommendation</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ratio-summary-table">
+                                    <!-- Rows will be injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                     <div class="mt-4 bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm p-4 rounded-lg">
+                        <p><i class="fas fa-exclamation-triangle mr-2"></i><strong>Caution:</strong> The ratios and interpretations presented here are for educational and demonstrational purposes only. They are based on simplified calculations. A real-world credit assessment by a financial institution would involve a much more detailed analysis, including cash flow statements, industry benchmarks, macroeconomic factors, and qualitative assessments of management and strategy.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function recalculateFinancials() {
+            const activeTab = document.querySelector('#financials-container .sub-tab-button.active');
+            if (!activeTab) return;
+            const standard = activeTab.dataset.tab.replace('-content', '');
+            
+            if (standard === 'ifrs' || standard === 'gaap') {
+                recalculateFinancialsForStandard(standard);
+            }
+            // Always update the ratio analysis tab regardless of which statement is active
+            recalculateFinancialsForStandard('ifrs', true); // Use IFRS as the base for ratios, but don't update its UI unless it's active
+        }
+
+        function recalculateFinancialsForStandard(standard, isForRatioTabOnly = false) {
+            // --- Income Statement Calculations ---
+            const revenue = parseLocalFloat(document.getElementById(`is-revenue-${standard}`).textContent);
+            const cogs = parseLocalFloat(document.getElementById(`is-cogs-${standard}`).textContent);
+            const sga = parseLocalFloat(document.getElementById(`is-sga-${standard}`).textContent);
+            const depr = parseLocalFloat(document.getElementById(`is-depr-${standard}`).textContent);
+            const interest = parseLocalFloat(document.getElementById(`is-interest-${standard}`).textContent);
+            const tax = parseLocalFloat(document.getElementById(`is-tax-${standard}`).textContent);
+
+            const grossProfit = revenue - cogs;
+            const ebit = grossProfit - sga - depr;
+            const ebt = ebit - interest;
+            const netIncome = ebt - tax;
+
+            // --- Balance Sheet Calculations ---
+            const cash = parseLocalFloat(document.getElementById(`bs-cash-${standard}`).textContent);
+            const ar = parseLocalFloat(document.getElementById(`bs-ar-${standard}`).textContent);
+            const inventory = parseLocalFloat(document.getElementById(`bs-inventory-${standard}`).textContent);
+            const gross_ppe = parseLocalFloat(document.getElementById(`bs-gross-ppe-${standard}`).textContent);
+            const acc_depr = parseLocalFloat(document.getElementById(`bs-acc-depr-${standard}`).textContent);
+            const goodwill = parseLocalFloat(document.getElementById(`bs-goodwill-${standard}`).textContent);
+            const ap = parseLocalFloat(document.getElementById(`bs-ap-${standard}`).textContent);
+            const accrued_exp = parseLocalFloat(document.getElementById(`bs-accrued-exp-${standard}`).textContent);
+            const provisions = parseLocalFloat(document.getElementById(`bs-provisions-${standard}`).textContent);
+            const shortDebt = parseLocalFloat(document.getElementById(`bs-short-debt-${standard}`).textContent);
+            const longDebt = parseLocalFloat(document.getElementById(`bs-long-debt-${standard}`).textContent);
+            const deferred_tax = parseLocalFloat(document.getElementById(`bs-deferred-tax-${standard}`).textContent);
+            const stock = parseLocalFloat(document.getElementById(`bs-stock-${standard}`).textContent);
+            
+            const currentAssets = cash + ar + inventory;
+            const net_ppe = gross_ppe - acc_depr;
+            const totalAssets = currentAssets + net_ppe + goodwill;
+            const currentLiabilities = ap + shortDebt + accrued_exp + provisions;
+            const totalLiabilities = currentLiabilities + longDebt + deferred_tax;
+            const retainedEarnings = totalAssets - totalLiabilities - stock;
+            const totalEquity = stock + retainedEarnings;
+            const totalLiabilitiesEquity = totalLiabilities + totalEquity;
+
+            if (!isForRatioTabOnly) {
+                document.getElementById(`is-gross-profit-${standard}`).textContent = formatCurrency(grossProfit, 'EUR', 0);
+                document.getElementById(`is-ebit-${standard}`).textContent = formatCurrency(ebit, 'EUR', 0);
+                document.getElementById(`is-ebt-${standard}`).textContent = formatCurrency(ebt, 'EUR', 0);
+                document.getElementById(`is-net-income-${standard}`).textContent = formatCurrency(netIncome, 'EUR', 0);
+                document.getElementById(`bs-current-assets-${standard}`).textContent = formatCurrency(currentAssets, 'EUR', 0);
+                document.getElementById(`bs-net-ppe-${standard}`).textContent = formatCurrency(net_ppe, 'EUR', 0);
+                document.getElementById(`bs-total-assets-${standard}`).textContent = formatCurrency(totalAssets, 'EUR', 0);
+                document.getElementById(`bs-current-liabilities-${standard}`).textContent = formatCurrency(currentLiabilities, 'EUR', 0);
+                document.getElementById(`bs-total-liabilities-${standard}`).textContent = formatCurrency(totalLiabilities, 'EUR', 0);
+                document.getElementById(`bs-retained-earnings-${standard}`).textContent = formatCurrency(retainedEarnings, 'EUR', 0);
+                document.getElementById(`bs-total-equity-${standard}`).textContent = formatCurrency(totalEquity, 'EUR', 0);
+                document.getElementById(`bs-total-liabilities-equity-${standard}`).textContent = formatCurrency(totalLiabilitiesEquity, 'EUR', 0);
+            }
+            
+            // --- Credit & Ratio Analysis Tab Calculations ---
+            const getInterpretation = (value, goodThreshold, poorThreshold, isHigherBetter = true) => {
+                let status = '';
+                 if (isHigherBetter) {
+                    if (value >= goodThreshold) status = 'Good';
+                    else if (value >= poorThreshold) status = 'Fair';
+                    else status = 'Poor';
+                } else {
+                    if (value <= goodThreshold) status = 'Good';
+                    else if (value <= poorThreshold) status = 'Fair';
+                    else status = 'Poor';
+                }
+                const color = status === 'Good' ? 'green' : status === 'Fair' ? 'yellow' : 'red';
+                return `<span class="text-xs font-semibold bg-${color}-100 text-${color}-800 px-2 py-1 rounded-full">${status}</span>`;
+            };
+            
+            const ratios = {
+                current: currentLiabilities > 0 ? (currentAssets / currentLiabilities) : 0,
+                quick: currentLiabilities > 0 ? ((currentAssets - inventory) / currentLiabilities) : 0,
+                de: totalEquity > 0 ? (totalLiabilities / totalEquity) : 0,
+                da: totalAssets > 0 ? (totalLiabilities / totalAssets) : 0,
+                npm: revenue > 0 ? (netIncome / revenue) : 0,
+                roe: totalEquity > 0 ? (netIncome / totalEquity) : 0,
+                tie: interest > 0 ? (ebit / interest) : 0
+            };
+
+            const recommendations = {
+                current: { good: 'Strong ability to cover short-term debt. Indicates low liquidity risk.', bad: 'Potential difficulty meeting short-term obligations. May need to manage payables or secure financing.' },
+                quick: { good: 'Excellent ability to cover short-term debt without selling inventory. Very strong liquidity.', bad: 'Heavily reliant on inventory to meet obligations. A slowdown in sales could cause a cash crunch.' },
+                de: { good: 'Low reliance on debt financing. Indicates a conservative financial structure and lower risk for lenders.', bad: 'High leverage. The company is aggressively financed with debt, increasing financial risk.' },
+                npm: { good: 'Efficiently converts revenue into profit. Indicates strong pricing power and cost control.', bad: 'Low profitability from sales. May face issues with pricing, high costs, or operational inefficiencies.' },
+                roe: { good: 'Generates high profits from shareholder equity. Indicates effective use of capital.', bad: 'Inefficient use of shareholder capital to generate profits. May signal underlying business issues.' },
+                tie: { good: 'Very strong ability to cover interest payments with operating income. Low risk of default on debt.', bad: 'Earnings may not be sufficient to comfortably cover interest payments, a major red flag for lenders.' }
+            };
+
+            document.getElementById('ratio-current').textContent = ratios.current.toFixed(2);
+            document.getElementById('ratio-quick').textContent = ratios.quick.toFixed(2);
+            document.getElementById('ratio-d-e').textContent = ratios.de.toFixed(2);
+            document.getElementById('ratio-d-a').textContent = ratios.da.toFixed(2);
+            document.getElementById('ratio-npm').textContent = `${(ratios.npm * 100).toFixed(1)}%`;
+            document.getElementById('ratio-roe').textContent = `${(ratios.roe * 100).toFixed(1)}%`;
+            document.getElementById('ratio-tie').textContent = ratios.tie.toFixed(2) + 'x';
+
+            const tableBody = document.getElementById('ratio-summary-table');
+            tableBody.innerHTML = `
+                <tr class="border-b"><td class="py-2">Current Ratio</td><td class="text-right font-mono">${ratios.current.toFixed(2)}</td><td class="text-center">${getInterpretation(ratios.current, 2.0, 1.0)}</td><td class="text-xs text-gray-600 pl-2">${ratios.current > 1.5 ? recommendations.current.good : recommendations.current.bad}</td></tr>
+                <tr class="border-b"><td class="py-2">Quick Ratio</td><td class="text-right font-mono">${ratios.quick.toFixed(2)}</td><td class="text-center">${getInterpretation(ratios.quick, 1.0, 0.7)}</td><td class="text-xs text-gray-600 pl-2">${ratios.quick > 1.0 ? recommendations.quick.good : recommendations.quick.bad}</td></tr>
+                <tr class="border-b"><td class="py-2">Debt-to-Equity</td><td class="text-right font-mono">${ratios.de.toFixed(2)}</td><td class="text-center">${getInterpretation(ratios.de, 1.0, 2.0, false)}</td><td class="text-xs text-gray-600 pl-2">${ratios.de < 1.5 ? recommendations.de.good : recommendations.de.bad}</td></tr>
+                <tr class="border-b"><td class="py-2">Net Profit Margin</td><td class="text-right font-mono">${(ratios.npm * 100).toFixed(1)}%</td><td class="text-center">${getInterpretation(ratios.npm, 0.15, 0.05)}</td><td class="text-xs text-gray-600 pl-2">${ratios.npm > 0.1 ? recommendations.npm.good : recommendations.npm.bad}</td></tr>
+                <tr class="border-b"><td class="py-2">Return on Equity</td><td class="text-right font-mono">${(ratios.roe * 100).toFixed(1)}%</td><td class="text-center">${getInterpretation(ratios.roe, 0.20, 0.10)}</td><td class="text-xs text-gray-600 pl-2">${ratios.roe > 0.15 ? recommendations.roe.good : recommendations.roe.bad}</td></tr>
+                <tr><td class="py-2">Times Interest Earned</td><td class="text-right font-mono">${ratios.tie.toFixed(2)}x</td><td class="text-center">${getInterpretation(ratios.tie, 5.0, 2.0)}</td><td class="text-xs text-gray-600 pl-2">${ratios.tie > 3.0 ? recommendations.tie.good : recommendations.tie.bad}</td></tr>
+            `;
+        }
 
         // --- MAIN APP LOGIC & EVENT LISTENERS --- //
         document.getElementById('loginBtn').addEventListener('click', async () => {
@@ -364,7 +851,10 @@
                     case 'ar': renderARTab(); break;
                     case 'treasury': renderTreasuryTab(); break;
                     case 'master-data': renderMasterDataTab(); break;
-                    case 'financials': renderFinancialsTab(); break;
+                    case 'financials': 
+                        renderFinancialsTab(); 
+                        recalculateFinancials(); // Initial calculation
+                        break;
                     case 'process': 
                         renderProcessFlowTab();
                         renderProcessFlow('ap');
@@ -374,6 +864,18 @@
                 }
             }
         });
+        
+        document.getElementById('kpi-grid').addEventListener('click', function(e){
+            const kpiCard = e.target.closest('.kpi-card');
+            if (kpiCard) {
+                const kpiId = kpiCard.dataset.kpi;
+                const title = kpiCard.dataset.title;
+                if (kpiId !== 'risk') { // 'risk' is static, no trend to show
+                    openKpiModal(kpiId, title);
+                }
+            }
+        });
+
     });
     </script>
 </body>
