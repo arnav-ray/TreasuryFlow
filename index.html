@@ -4,9 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TreasuryFlow - Comprehensive ERP Agnostic Platform</title>
+    <!--
+      SECURITY NOTE: A Content-Security-Policy HTTP header should be set at the
+      server/CDN level for production. The meta-tag below is a baseline fallback
+      and does NOT replace server-side headers. 'unsafe-inline' is required for
+      Tailwind CDN and inline event handlers in this prototype; remove it in
+      production by migrating to a proper build pipeline with nonce-based CSP.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://s3.tradingview.com;
+      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+      font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com;
+      img-src 'self' data: https:;
+      connect-src 'self' https://api.exchangerate-api.com https://generativelanguage.googleapis.com;
+      frame-ancestors 'none';
+    ">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <!--
+      SECURITY NOTE: Tailwind CDN dynamically generates CSS at runtime; it cannot
+      be integrity-hashed. For production, use the Tailwind CLI build instead.
+    -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!--
+      Font Awesome 6.4.0 — pinned version. Add integrity hash in production:
+      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+      crossorigin="anonymous"
+    -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!--
+      Chart.js — pinned to 4.4.3. Add integrity hash in production via:
+      https://www.srihash.org/ or `openssl dgst -sha384 -binary chart.umd.min.js | openssl base64 -A`
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
@@ -53,13 +83,14 @@
                     <div><label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label><input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., password"></div>
                     <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg hover:shadow-xl">Sign In</button>
                 </div>
+                <!--
+                  SECURITY: Demo credentials are documented in README.md only —
+                  never display passwords in the UI, even for prototypes. In
+                  production, remove all hardcoded credentials and use a proper
+                  identity provider (OAuth 2.0 / SAML with MFA).
+                -->
                 <div class="mt-6 text-center">
-                    <p class="text-sm text-gray-500">Demo accounts:</p>
-                    <div class="text-xs text-gray-400 mt-1">
-                        <p>Admin: <strong>admin</strong> / password</p>
-                        <p>Finance: <strong>finance</strong> / password</p>
-                        <p>Approver: <strong>approver</strong> / password</p>
-                    </div>
+                    <p class="text-xs text-gray-400">Demo prototype — see README for access details.</p>
                 </div>
             </div>
             <div class="text-white text-center mt-6 max-w-2xl">
@@ -199,13 +230,34 @@
         // --- SCRIPT SCOPE VARIABLES & CONFIG --- //
         let exchangeRates = {};
         const BASE_CURRENCY = 'EUR';
+        // SECURITY NOTE: Prototype uses in-memory, plaintext credential comparison.
+        // Production MUST use a backend identity provider with hashed credentials,
+        // token-based sessions (JWT/OAuth 2.0), MFA, and server-side authorization.
+        // All permission checks below are UI-only and trivially bypassable in DevTools.
         const userProfiles = {
-            admin: { name: 'Sarah Johnson', role: 'CFO • Admin', avatar: 'S', permissions: { canEditRoles: true } },
-            finance: { name: 'Michael Chen', role: 'Controller • Finance', avatar: 'M', permissions: { canEditRoles: false } },
-            approver: { name: 'Jennifer Lee', role: 'Manager • Approver', avatar: 'J', permissions: { canEditRoles: false } }
+            admin:    { name: 'Alex Admin',     role: 'CFO • Admin',              avatar: 'A', permissions: { canEditRoles: true  } },
+            finance:  { name: 'Sam Finance',    role: 'Controller • Finance',     avatar: 'F', permissions: { canEditRoles: false } },
+            approver: { name: 'Jordan Approver',role: 'Manager • Approver',       avatar: 'J', permissions: { canEditRoles: false } }
         };
         let currentUser = {};
         let charts = {}; // Object to hold all chart instances
+
+        // GOVERNANCE: Client-side audit log for prototype demonstration.
+        // In production this MUST be an immutable server-side audit trail stored
+        // in a tamper-proof append-only store (e.g., separate database table or
+        // WORM storage), retained per your compliance policy (e.g., 7 years SOC2).
+        const auditLog = [];
+        function logAuditEvent(action, detail = '') {
+            const entry = {
+                timestamp: new Date().toISOString(),
+                user: currentUser.name || 'anonymous',
+                role: currentUser.role || 'unknown',
+                action,
+                detail
+            };
+            auditLog.unshift(entry); // newest first
+            if (auditLog.length > 200) auditLog.pop(); // cap in-memory log
+        }
 
         // --- DATA MOCKING --- //
         const masterData = { '1000': { vendors: [ { id: 'V-1001', name: 'Global Supplies Inc.', address: 'Berlin, Germany', terms: '2/10 net 30', status: 'Active' }, { id: 'V-1002', name: 'Tech Components LLC', address: 'Munich, Germany', terms: 'Net 30', status: 'Active' }, ], customers: [ { id: 'C-2001', name: 'Enterprise Corp', address: 'Frankfurt, Germany', creditLimit: '€500,000', status: 'Active' }, ] }, '2000': { vendors: [ { id: 'V-3001', name: 'US Office Solutions', address: 'New York, USA', terms: 'Net 45', status: 'Active' }, ], customers: [ { id: 'C-4001', name: 'Innovate Tech USA', address: 'San Francisco, USA', creditLimit: '$750,000', status: 'Active' }, ] }, '3000': { vendors: [ { id: 'V-5001', name: 'UK Logistics', address: 'London, UK', terms: 'Net 60', status: 'Active' }, ], customers: [ { id: 'C-6001', name: 'British Retail Group', address: 'Manchester, UK', creditLimit: '£400,000', status: 'On Hold' }, ] } };
@@ -214,6 +266,15 @@
         const processFlows = { ap: { name: "Procure-to-Pay (P2P) Workflow", documents: apInvoices, steps: [ { name: 'Requisition', id: 'Requisition', description: 'Request for goods or services is created.' }, { name: 'Purchase Order', id: 'Purchase Order', description: 'PO is created and sent to the vendor.' }, { name: 'Goods/Services Receipt', id: 'Receipt', description: 'Confirmation of goods/services received.' }, { name: 'Invoice Receipt & Validation', id: 'Data Validation', description: 'Invoice is received and validated against PO/receipt.' }, { name: 'Approval Routing', id: 'Approval Routing', description: 'Invoice is routed for internal approval.' }, { name: 'Payment Scheduling', id: 'Payment Scheduling', description: 'Invoice is scheduled for payment.' }, { name: 'Payment Execution', id: 'Payment Execution', description: 'Payment is executed and recorded.' }, ] }, ar: { name: "Order-to-Cash (O2C) Workflow", documents: arReceivables, steps: [ { name: 'Sales Order', id: 'Sales Order', description: 'Customer order is received.' }, { name: 'Fulfillment & Delivery', id: 'Fulfillment', description: 'Goods are shipped or services delivered.' }, { name: 'Invoice Creation', id: 'Invoice Creation', description: 'Invoice is generated.' }, { name: 'Invoice Delivery', id: 'Invoice Delivery', description: 'The invoice is sent to the customer.' }, { name: 'Payment Collection', id: 'Payment Collection', description: 'Collection activities for outstanding invoices.' }, { name: 'Cash Application', id: 'Cash Application', description: 'Payment is matched to invoices.' }, ] } };
         
         // --- UTILITY FUNCTIONS --- //
+
+        // SECURITY: Use escapeHTML() whenever inserting user-supplied or external
+        // data into innerHTML template literals. Prefer textContent for plain text.
+        const escapeHTML = (str) => {
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        };
+
         const formatCurrency = (amount, currency, digits = 2) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(amount);
         const parseLocalFloat = (s) => {
             s = String(s).replace(/[^0-9.,-]+/g, "");
@@ -236,7 +297,8 @@
                 exchangeRates = data.rates;
                 if(statusEl) statusEl.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i>Rates updated`;
             } catch (error) {
-                console.warn("Using fallback exchange rates:", error);
+                // SECURITY: Do not log raw error objects — they may contain URLs or stack traces.
+                console.warn("Exchange rate API unavailable. Using fallback rates.");
                 if(statusEl) statusEl.innerHTML = `<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>Using fallback rates`;
                 exchangeRates = { 'USD': 1.08, 'GBP': 0.85, 'JPY': 165.2, 'INR': 90.5, 'EUR': 1, 'CNY': 7.8, 'AUD': 1.6 };
             }
@@ -329,8 +391,16 @@
             const sendAIChat = async () => {
                 const message = aiChatInput.value.trim();
                 if (!message) return;
-                aiChatContainer.innerHTML += `<div class="flex justify-end mt-2"><div class="bg-blue-600 text-white p-2 rounded-lg max-w-xs text-sm">${message}</div></div>`;
-                aiChatInput.value = ''; 
+                // SECURITY FIX: Use DOM API + textContent instead of innerHTML to
+                // prevent XSS from user-controlled input.
+                const userMsgWrap = document.createElement('div');
+                userMsgWrap.className = 'flex justify-end mt-2';
+                const userMsgBubble = document.createElement('div');
+                userMsgBubble.className = 'bg-blue-600 text-white p-2 rounded-lg max-w-xs text-sm';
+                userMsgBubble.textContent = message;
+                userMsgWrap.appendChild(userMsgBubble);
+                aiChatContainer.appendChild(userMsgWrap);
+                aiChatInput.value = '';
                 aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
                 
                 const thinkingDiv = document.createElement('div');
@@ -344,30 +414,51 @@
                 const context = `Current financial context: Total AP is ${formatCurrency(totalAP, BASE_CURRENCY)}, Total AR is ${formatCurrency(totalAR, BASE_CURRENCY)}, Available Cash is ${formatCurrency(12400000, 'EUR')}.`;
                 const prompt = `${context} Based on this, answer the following user question: "${message}"`;
 
-                const apiKey = ""; // Will be handled by the environment
+                // SECURITY: API keys MUST NEVER be embedded in client-side code.
+                // In production, proxy all AI API calls through a backend endpoint
+                // that injects the key server-side (e.g., /api/ai-chat).
+                // An exposed key allows unlimited quota abuse by any user.
+                const apiKey = ""; // Prototype placeholder — set via backend proxy in production
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                
+
                 try {
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                     });
-                    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                    if (!response.ok) throw new Error(`API request failed (${response.status})`);
                     const result = await response.json();
-                    const aiText = result.candidates[0].content.parts[0].text;
-                    thinkingDiv.innerHTML = `<p>${aiText.replace(/\n/g, '<br>')}</p>`;
+                    // SECURITY FIX: Use optional chaining to guard against unexpected API response shape.
+                    const aiText = result?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response text received.';
+                    // SECURITY FIX: Escape AI response before rendering; replace newlines with <br> after escaping.
+                    thinkingDiv.innerHTML = `<p>${escapeHTML(aiText).replace(/\n/g, '<br>')}</p>`;
                     thinkingDiv.classList.remove('thinking');
                 } catch (error) {
-                    console.error("Gemini API call failed:", error);
-                    thinkingDiv.innerHTML = `<p>Sorry, I couldn't get a response. Please check the console for errors.</p>`;
+                    // SECURITY: Do not expose raw error objects or stack traces to the console.
+                    console.warn("AI assistant unavailable.");
+                    thinkingDiv.innerHTML = `<p>Sorry, the AI assistant is currently unavailable. Please try again later.</p>`;
                     thinkingDiv.classList.remove('thinking');
                 }
                  aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
             };
             if (aiChatSendButton) {
-                aiChatSendButton.addEventListener('click', sendAIChat);
-                aiChatInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendAIChat());
+                // SECURITY FIX: Rate-limit AI requests to prevent API quota abuse.
+                // Each click disables the button for 3 seconds (client-side only).
+                // Production MUST enforce server-side rate limiting per user/IP.
+                let aiRateLimited = false;
+                const sendWithRateLimit = async () => {
+                    if (aiRateLimited) return;
+                    aiRateLimited = true;
+                    aiChatSendButton.disabled = true;
+                    await sendAIChat();
+                    setTimeout(() => {
+                        aiRateLimited = false;
+                        aiChatSendButton.disabled = false;
+                    }, 3000);
+                };
+                aiChatSendButton.addEventListener('click', sendWithRateLimit);
+                aiChatInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendWithRateLimit());
             }
         }
         function setupSubTabs(containerId) {
@@ -418,6 +509,8 @@
             document.getElementById('ap-table').addEventListener('click', e => {
                 if (e.target.classList.contains('view-ap-details')) {
                     const invoice = apInvoices.find(i => i.id === e.target.dataset.id);
+                    if (!invoice) return;
+                    logAuditEvent('VIEW_AP_INVOICE', `Viewed invoice ${invoice.id} (${invoice.vendor})`);
                     const modalContent = `<div class="grid grid-cols-2 gap-4 text-sm"><div class="font-semibold text-gray-500">Vendor:</div><div>${invoice.vendor}</div><div class="font-semibold text-gray-500">Amount:</div><div>${formatCurrency(invoice.amount, invoice.currency)}</div><div class="font-semibold text-gray-500">Due Date:</div><div>${invoice.dueDate}</div><div class="font-semibold text-gray-500">Status:</div><div>${invoice.status}</div><div class="font-semibold text-gray-500">Related PO:</div><div>${invoice.po}</div><div class="font-semibold text-gray-500">Related GR:</div><div>${invoice.gr}</div></div><h4 class="font-semibold mt-6 mb-2">Approval History</h4><ul class="list-disc list-inside text-sm text-gray-600"><li>Created by Finance Team</li><li>Approved by Department Manager</li><li>Final approval by CFO</li></ul><div class="mt-6 pt-4 border-t"><button class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm draft-email-btn">✨ Draft Follow-up Email</button><div id="email-draft-container" class="mt-4 hidden"><label class="block text-sm font-medium text-gray-700">Generated Email Draft:</label><textarea id="email-draft-area" class="w-full h-40 mt-1 border-gray-300 rounded-md shadow-sm" readonly></textarea></div></div>`;
                     openModal(`Invoice Details: ${invoice.id}`, modalContent);
                     
@@ -425,17 +518,21 @@
                         this.textContent = 'Drafting...';
                         this.disabled = true;
                         const prompt = `You are a finance professional. Draft a polite but firm follow-up email to ${invoice.vendor} regarding invoice ${invoice.id} for ${formatCurrency(invoice.amount, invoice.currency)}, which was due on ${invoice.dueDate} and is currently marked as ${invoice.status}. Keep it concise.`;
-                        const apiKey = ""; 
+                        // SECURITY: API key must be injected server-side in production — see AI chat note above.
+                        const apiKey = ""; // Prototype placeholder — set via backend proxy in production
                         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                         try {
                             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-                            if (!response.ok) throw new Error('API Error');
+                            if (!response.ok) throw new Error(`API request failed (${response.status})`);
                             const result = await response.json();
-                            const emailText = result.candidates[0].content.parts[0].text;
+                            // SECURITY FIX: Optional chaining guards against unexpected API response shape.
+                            const emailText = result?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response received.';
                             document.getElementById('email-draft-area').value = emailText;
                             document.getElementById('email-draft-container').classList.remove('hidden');
                         } catch (error) {
-                            document.getElementById('email-draft-area').value = "Error generating email. Please try again.";
+                            // SECURITY: Do not expose raw error objects or stack traces to the console.
+                            console.warn("Email draft AI unavailable.");
+                            document.getElementById('email-draft-area').value = "AI email drafting is currently unavailable. Please try again later.";
                             document.getElementById('email-draft-container').classList.remove('hidden');
                         } finally {
                             this.textContent = '✨ Draft Follow-up Email';
@@ -531,12 +628,43 @@
             setupSubTabs('master-data-container');
         }
         function renderGovernanceTab() {
-            const canEdit = currentUser.permissions.canEditRoles;
-            document.getElementById('governance-content').innerHTML = `<div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">Governance & Security</h2><div class="bg-white rounded-xl shadow-sm border" id="governance-container"><div class="p-4 border-b"><nav class="flex space-x-8"><button class="sub-tab-button active pb-2 border-b-2" data-tab="roles-content">User Roles & Permissions</button><button class="sub-tab-button pb-2 border-b-2" data-tab="api-content">API Status</button><button class="sub-tab-button pb-2 border-b-2" data-tab="audit-content">Audit Log</button></nav></div><div class="p-6"><div id="roles-content" class="sub-tab-content active"></div><div id="api-content" class="sub-tab-content"></div><div id="audit-content" class="sub-tab-content"></div></div></div></div>`;
+            // SECURITY NOTE: canEditRoles is a UI-only flag — it controls display only.
+            // In production ALL authorization decisions must be enforced server-side.
+            const canEdit = currentUser.permissions?.canEditRoles ?? false;
+            logAuditEvent('VIEW_GOVERNANCE', 'Accessed Governance & Security tab.');
+            document.getElementById('governance-content').innerHTML = `<div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">Governance & Security</h2><div class="bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs p-3 rounded-lg mb-4"><strong>Prototype Notice:</strong> All access controls shown here are client-side UI demonstrations only. In production, enforce permissions server-side with RLS policies and backend authorization. Audit log entries below are in-memory only and lost on page reload.</div><div class="bg-white rounded-xl shadow-sm border" id="governance-container"><div class="p-4 border-b"><nav class="flex space-x-8"><button class="sub-tab-button active pb-2 border-b-2" data-tab="roles-content">User Roles & Permissions</button><button class="sub-tab-button pb-2 border-b-2" data-tab="api-content">API Status</button><button class="sub-tab-button pb-2 border-b-2" data-tab="audit-content">Audit Log</button></nav></div><div class="p-6"><div id="roles-content" class="sub-tab-content active"></div><div id="api-content" class="sub-tab-content"></div><div id="audit-content" class="sub-tab-content"></div></div></div></div>`;
             setupSubTabs('governance-container');
-            document.getElementById('roles-content').innerHTML = `<h3 class="text-lg font-semibold mb-4">Role-Based Access Control</h3><div class="overflow-x-auto"><table class="w-full text-sm">...</table></div>`; 
-            document.getElementById('api-content').innerHTML = `<h3 class="text-lg font-semibold mb-4">API Connection Status</h3><div class="grid grid-cols-2 gap-4">...</div>`; 
-            document.getElementById('audit-content').innerHTML = `<h3 class="text-lg font-semibold mb-4">System Audit Log</h3><div class="font-mono text-xs bg-gray-800 text-green-400 p-4 rounded-lg h-64 overflow-y-auto">...</div>`;
+            document.getElementById('roles-content').innerHTML = `
+                <h3 class="text-lg font-semibold mb-2">Role-Based Access Control</h3>
+                <p class="text-xs text-gray-500 mb-4">Current user: <strong>${escapeHTML(currentUser.name)}</strong> (${escapeHTML(currentUser.role)}) — canEditRoles: <strong>${canEdit}</strong></p>
+                <div class="overflow-x-auto"><table class="w-full text-sm border">
+                    <thead class="bg-gray-50"><tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Role</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">View Data</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Approve Invoices</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Edit Roles</th>
+                    </tr></thead>
+                    <tbody class="divide-y">
+                        <tr><td class="px-4 py-2">CFO • Admin</td><td class="px-4 py-2 text-green-600">✔</td><td class="px-4 py-2 text-green-600">✔</td><td class="px-4 py-2 text-green-600">✔</td></tr>
+                        <tr><td class="px-4 py-2">Controller • Finance</td><td class="px-4 py-2 text-green-600">✔</td><td class="px-4 py-2 text-green-600">✔</td><td class="px-4 py-2 text-red-500">✘</td></tr>
+                        <tr><td class="px-4 py-2">Manager • Approver</td><td class="px-4 py-2 text-green-600">✔</td><td class="px-4 py-2 text-red-500">✘</td><td class="px-4 py-2 text-red-500">✘</td></tr>
+                    </tbody>
+                </table></div>`;
+            document.getElementById('api-content').innerHTML = `
+                <h3 class="text-lg font-semibold mb-4">API Connection Status</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="border rounded-lg p-4"><p class="font-medium">Exchange Rate API</p><p class="text-xs text-gray-500">api.exchangerate-api.com</p><p class="text-green-600 text-xs mt-1">● Public API — no key required</p></div>
+                    <div class="border rounded-lg p-4"><p class="font-medium">Google Gemini AI</p><p class="text-xs text-gray-500">generativelanguage.googleapis.com</p><p class="text-yellow-600 text-xs mt-1">⚠ API key required — must be injected server-side in production</p></div>
+                    <div class="border rounded-lg p-4"><p class="font-medium">TradingView Widget</p><p class="text-xs text-gray-500">s3.tradingview.com</p><p class="text-blue-600 text-xs mt-1">● Third-party embed — add SRI hash in production</p></div>
+                </div>`;
+            // Render real in-memory audit log
+            const logLines = auditLog.length > 0
+                ? auditLog.map(e => `[${escapeHTML(e.timestamp)}] [${escapeHTML(e.action.padEnd(20))}] ${escapeHTML(e.user)} (${escapeHTML(e.role)}) — ${escapeHTML(e.detail)}`).join('\n')
+                : '(No events recorded yet. Log in, navigate tabs, and view invoices to generate entries.)';
+            document.getElementById('audit-content').innerHTML = `
+                <h3 class="text-lg font-semibold mb-1">System Audit Log</h3>
+                <p class="text-xs text-gray-500 mb-3">In-memory prototype log — ${auditLog.length} event(s) this session. Production requires an immutable server-side audit trail.</p>
+                <pre class="font-mono text-xs bg-gray-900 text-green-400 p-4 rounded-lg h-64 overflow-y-auto whitespace-pre-wrap">${logLines}</pre>`;
         }
         function renderProcessFlow(processKey) {
             const flow = processFlows[processKey];
@@ -821,20 +949,32 @@
             const username = document.getElementById('username').value;
             if (userProfiles[username] && document.getElementById('password').value === 'password') {
                 currentUser = userProfiles[username];
+                logAuditEvent('LOGIN', `User "${username}" authenticated successfully.`);
                 await fetchExchangeRates();
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('userDisplayName').textContent = currentUser.name;
                 document.getElementById('userRole').textContent = currentUser.role;
-                document.getElementById('userAvatar').src = `https://placehold.co/40x40/6366f1/ffffff?text=${currentUser.avatar}`;
+                // SECURITY FIX: Generate avatar locally — do not leak user initials to a third-party service.
+                const avatarEl = document.getElementById('userAvatar');
+                const svgAvatar = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#6366f1"/><text x="20" y="25" text-anchor="middle" font-size="16" font-family="Inter,sans-serif" font-weight="600" fill="#ffffff">${escapeHTML(currentUser.avatar)}</text></svg>`;
+                avatarEl.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgAvatar)}`;
                 renderDashboard();
             } else { alert('Invalid credentials.'); }
         });
-        document.getElementById('logoutBtn').addEventListener('click', () => { 
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            // SECURITY FIX: Clear all user session state on logout so a subsequent
+            // browser-back or DevTools inspection reveals no residual user data.
+            logAuditEvent('LOGOUT', `User "${currentUser.name}" signed out.`);
+            currentUser = {};
+            // Destroy chart instances to free memory and prevent stale state
+            Object.values(charts).forEach(c => { try { c.destroy(); } catch(_) {} });
+            charts = {};
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
+            document.getElementById('userAvatar').src = '';
         });
         document.getElementById('main-tabs').addEventListener('click', function(e) {
             if (e.target.matches('.tab-button')) {
