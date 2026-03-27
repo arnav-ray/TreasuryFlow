@@ -577,7 +577,7 @@
             const bankAccounts = [ { bank: 'Deutsche Bank (DE)', currency: 'EUR', balance: 8200000 }, { bank: 'JPMorgan Chase (US)', currency: 'USD', balance: 4500000 }, { bank: 'HSBC (UK)', currency: 'GBP', balance: 2100000 }, { bank: 'MUFG Bank (JP)', currency: 'JPY', balance: 500000000 } ];
             const totalCash = bankAccounts.reduce((sum, acc) => sum + convertToBASE(acc.balance, acc.currency), 0);
             const container = document.getElementById('treasury-content');
-            container.innerHTML = `<div class="p-6"><div id="tradingview-widget-container" class="tradingview-widget-container mb-6"><div class="tradingview-widget-container__widget"></div></div><h2 class="text-2xl font-bold text-gray-800 mb-6">Treasury Operations</h2><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Multi-Currency Cash Position</h3><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left font-medium text-gray-500 uppercase">Bank</th><th class="px-4 py-2 text-right font-medium text-gray-500 uppercase">Balance</th><th class="px-4 py-2 text-right font-medium text-gray-500 uppercase">Balance (${BASE_CURRENCY})</th></tr></thead><tbody class="divide-y">${bankAccounts.map(acc => `<tr><td class="px-4 py-2">${acc.bank}</td><td class="px-4 py-2 text-right font-semibold">${formatCurrency(acc.balance, acc.currency)}</td><td class="px-4 py-2 text-right">${formatCurrency(convertToBASE(acc.balance, acc.currency), BASE_CURRENCY)}</td></tr>`).join('')}</tbody><tfoot class="border-t-2 font-bold"><tr class="bg-gray-50"><td class="px-4 py-2" colspan="2">Total Cash Position</td><td class="px-4 py-2 text-right">${formatCurrency(totalCash, BASE_CURRENCY)}</td></tr></tfoot></table></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">FX Hedging & Derivatives</h3><p class="text-sm text-gray-600 mb-4">Proof-of-concept for managing financial instruments to mitigate currency risk.</p><div class="text-sm"><p class="font-semibold">Open Positions:</p><ul class="list-disc list-inside text-gray-700"><li>FWD Contract: Sell $2M USD / Buy EUR @ 1.075</li><li>EUR Call Option: Buy €1M, Strike €1.10</li></ul></div><button id="model-hedge-btn" class="mt-4 w-full bg-blue-100 text-blue-700 font-semibold py-2 rounded-lg text-sm hover:bg-blue-200">Model New Hedge</button></div></div></div>`;
+            container.innerHTML = `<div class="p-6"><div id="tradingview-widget-container" class="tradingview-widget-container mb-6"><div class="tradingview-widget-container__widget"></div></div><h2 class="text-2xl font-bold text-gray-800 mb-6">Treasury Operations</h2><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">Multi-Currency Cash Position</h3><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left font-medium text-gray-500 uppercase">Bank</th><th class="px-4 py-2 text-right font-medium text-gray-500 uppercase">Balance</th><th class="px-4 py-2 text-right font-medium text-gray-500 uppercase">Balance (${escapeHTML(BASE_CURRENCY)})</th></tr></thead><tbody class="divide-y">${bankAccounts.map(acc => `<tr><td class="px-4 py-2">${escapeHTML(acc.bank)}</td><td class="px-4 py-2 text-right font-semibold">${escapeHTML(formatCurrency(acc.balance, acc.currency))}</td><td class="px-4 py-2 text-right">${escapeHTML(formatCurrency(convertToBASE(acc.balance, acc.currency), BASE_CURRENCY))}</td></tr>`).join('')}</tbody><tfoot class="border-t-2 font-bold"><tr class="bg-gray-50"><td class="px-4 py-2" colspan="2">Total Cash Position</td><td class="px-4 py-2 text-right">${escapeHTML(formatCurrency(totalCash, BASE_CURRENCY))}</td></tr></tfoot></table></div><div class="bg-white p-6 rounded-xl shadow-sm border"><h3 class="font-semibold text-gray-800 mb-4">FX Hedging & Derivatives</h3><p class="text-sm text-gray-600 mb-4">Proof-of-concept for managing financial instruments to mitigate currency risk.</p><div class="text-sm"><p class="font-semibold">Open Positions:</p><ul class="list-disc list-inside text-gray-700"><li>FWD Contract: Sell $2M USD / Buy EUR @ 1.075</li><li>EUR Call Option: Buy €1M, Strike €1.10</li></ul></div><button id="model-hedge-btn" class="mt-4 w-full bg-blue-100 text-blue-700 font-semibold py-2 rounded-lg text-sm hover:bg-blue-200">Model New Hedge</button></div></div></div>`;
             
             // BUGFIX — TradingView price scroll:
             // 1. script.async MUST be false (or omitted). With async=true the browser sets
@@ -998,9 +998,27 @@
         }
 
         // --- MAIN APP LOGIC & EVENT LISTENERS --- //
+
+        // SECURITY: Simple client-side login attempt counter.
+        // After 5 failed attempts the login button is locked for 30 seconds.
+        // Production MUST enforce server-side rate limiting and account lockout.
+        let loginAttempts = 0;
+        const LOGIN_MAX_ATTEMPTS = 5;
+        const LOGIN_LOCKOUT_MS = 30000;
+
         document.getElementById('loginBtn').addEventListener('click', async () => {
-            const username = document.getElementById('username').value;
-            if (userProfiles[username] && document.getElementById('password').value === 'password') {
+            if (loginAttempts >= LOGIN_MAX_ATTEMPTS) return; // locked — handled below
+
+            const username = document.getElementById('username').value.trim();
+
+            // SECURITY FIX: Guard against prototype pollution.
+            // Using a plain Object.prototype.hasOwnProperty check prevents an attacker
+            // from supplying "__proto__", "constructor", or "prototype" as the username
+            // and accidentally resolving to a truthy inherited property.
+            const isKnownUser = Object.prototype.hasOwnProperty.call(userProfiles, username);
+
+            if (isKnownUser && document.getElementById('password').value === 'password') {
+                loginAttempts = 0;
                 currentUser = userProfiles[username];
                 logAuditEvent('LOGIN', `User "${username}" authenticated successfully.`);
                 await fetchExchangeRates();
@@ -1013,7 +1031,21 @@
                 const svgAvatar = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#6366f1"/><text x="20" y="25" text-anchor="middle" font-size="16" font-family="Inter,sans-serif" font-weight="600" fill="#ffffff">${escapeHTML(currentUser.avatar)}</text></svg>`;
                 avatarEl.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgAvatar)}`;
                 renderDashboard();
-            } else { alert('Invalid credentials.'); }
+            } else {
+                loginAttempts++;
+                if (loginAttempts >= LOGIN_MAX_ATTEMPTS) {
+                    const btn = document.getElementById('loginBtn');
+                    btn.disabled = true;
+                    btn.textContent = 'Too many attempts — wait 30s';
+                    setTimeout(() => {
+                        loginAttempts = 0;
+                        btn.disabled = false;
+                        btn.textContent = 'Sign In';
+                    }, LOGIN_LOCKOUT_MS);
+                } else {
+                    alert(`Invalid credentials. ${LOGIN_MAX_ATTEMPTS - loginAttempts} attempt(s) remaining.`);
+                }
+            }
         });
         document.getElementById('logoutBtn').addEventListener('click', () => {
             // SECURITY FIX: Clear all user session state on logout so a subsequent
