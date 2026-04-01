@@ -5,38 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TreasuryFlow - Comprehensive ERP Agnostic Platform</title>
     <!--
-      SECURITY NOTE: A Content-Security-Policy HTTP header should be set at the
-      server/CDN level for production. The meta-tag below is a baseline fallback
-      and does NOT replace server-side headers. 'unsafe-inline' is required for
-      Tailwind CDN and inline event handlers in this prototype; remove it in
-      production by migrating to a proper build pipeline with nonce-based CSP.
+      SECURITY NOTES (prototype):
+      - CSP below is a meta-tag fallback. Production MUST set these as HTTP response headers
+        via vercel.json. 'unsafe-inline' is required while using Tailwind CDN; replace with
+        a nonce-based policy when migrating to a Vite/Tailwind CLI build pipeline.
+      - img-src is intentionally limited to 'self' and data: URIs only (avatars are inline SVG).
+      - frame-src allows *.tradingview.com so the ticker-tape widget iframe loads correctly.
+      - Tailwind CDN cannot be SRI-hashed (dynamic CSS generation); use Tailwind CLI for prod.
+      - Font Awesome and Chart.js are pinned to specific versions below. SRI hashes to add:
+          Font Awesome 6.4.0 integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+          Chart.js 4.4.3 — compute via: openssl dgst -sha384 -binary chart.umd.min.js | openssl base64 -A
     -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://s3.tradingview.com;
       style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
       font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com;
-      img-src 'self' data: https:;
+      img-src 'self' data:;
       connect-src 'self' https://api.exchangerate-api.com https://generativelanguage.googleapis.com https://*.tradingview.com;
       frame-src https://*.tradingview.com;
       frame-ancestors 'none';
     ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <!--
-      SECURITY NOTE: Tailwind CDN dynamically generates CSS at runtime; it cannot
-      be integrity-hashed. For production, use the Tailwind CLI build instead.
-    -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!--
-      Font Awesome 6.4.0 — pinned version. Add integrity hash in production:
-      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
-      crossorigin="anonymous"
-    -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!--
-      Chart.js — pinned to 4.4.3. Add integrity hash in production via:
-      https://www.srihash.org/ or `openssl dgst -sha384 -binary chart.umd.min.js | openssl base64 -A`
-    -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -237,10 +229,9 @@
         // --- SCRIPT SCOPE VARIABLES & CONFIG --- //
         let exchangeRates = {};
         const BASE_CURRENCY = 'EUR';
-        // SECURITY NOTE: Prototype uses in-memory, plaintext credential comparison.
-        // Production MUST use a backend identity provider with hashed credentials,
-        // token-based sessions (JWT/OAuth 2.0), MFA, and server-side authorization.
-        // All permission checks below are UI-only and trivially bypassable in DevTools.
+        // PROTOTYPE AUTH NOTE: credentials are plaintext in-memory. Production requires
+        // a backend IdP (OAuth 2.0 / SAML), hashed passwords (bcrypt/Argon2id), JWT sessions,
+        // MFA, and server-side authorization. All RBAC checks here are UI-only.
         const userProfiles = {
             admin:    { name: 'Alex Admin',     role: 'CFO • Admin',              avatar: 'A', permissions: { canEditRoles: true  } },
             finance:  { name: 'Sam Finance',    role: 'Controller • Finance',     avatar: 'F', permissions: { canEditRoles: false } },
@@ -249,10 +240,8 @@
         let currentUser = {};
         let charts = {}; // Object to hold all chart instances
 
-        // GOVERNANCE: Client-side audit log for prototype demonstration.
-        // In production this MUST be an immutable server-side audit trail stored
-        // in a tamper-proof append-only store (e.g., separate database table or
-        // WORM storage), retained per your compliance policy (e.g., 7 years SOC2).
+        // Prototype audit log — in-memory only, lost on page reload.
+        // Production requires an immutable server-side append-only store (7-year SOC2 retention).
         const auditLog = [];
         function logAuditEvent(action, detail = '') {
             const entry = {
@@ -274,8 +263,8 @@
         
         // --- UTILITY FUNCTIONS --- //
 
-        // SECURITY: Use escapeHTML() whenever inserting user-supplied or external
-        // data into innerHTML template literals. Prefer textContent for plain text.
+        // escapeHTML — must be used for every value interpolated into innerHTML.
+        // Use textContent directly for plain-text insertions (no HTML needed).
         const escapeHTML = (str) => {
             const div = document.createElement('div');
             div.textContent = String(str);
@@ -301,8 +290,6 @@
                 const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${BASE_CURRENCY}`);
                 if (!response.ok) throw new Error('API limit likely reached');
                 const data = await response.json();
-                // SECURITY: validate that the API returned an object with rate keys before trusting it.
-                // Prevents silent failures if the API changes shape or returns unexpected data.
                 if (!data.rates || typeof data.rates !== 'object') throw new Error('Unexpected API response shape');
                 // Allowlist: only accept numeric values for known currencies.
                 const EXPECTED_CURRENCIES = ['USD', 'GBP', 'JPY', 'INR', 'EUR', 'CNY', 'AUD'];
@@ -316,15 +303,12 @@
                 exchangeRates = validated;
                 if(statusEl) statusEl.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i>Rates updated`;
             } catch (error) {
-                // SECURITY: Do not log raw error objects — they may contain URLs or stack traces.
                 console.warn("Exchange rate API unavailable. Using fallback rates.");
                 if(statusEl) statusEl.innerHTML = `<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>Using fallback rates`;
                 exchangeRates = { 'USD': 1.08, 'GBP': 0.85, 'JPY': 165.2, 'INR': 90.5, 'EUR': 1, 'CNY': 7.8, 'AUD': 1.6 };
             }
         }
         function openModal(title, content) {
-            // SECURITY FIX: escape title before inserting into innerHTML; content is
-            // trusted HTML built from mocked data but callers must escape user-provided fields.
             const modalHTML = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"><header class="p-4 border-b flex justify-between items-center"><h3 class="text-lg font-semibold">${escapeHTML(title)}</h3><button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button></header><div class="p-6 overflow-y-auto">${content}</div></div></div>`;
             document.getElementById('modal-container').innerHTML = modalHTML;
             document.querySelector('.close-modal').addEventListener('click', closeModal);
@@ -406,14 +390,17 @@
         }
 
         async function setupAIChat() {
-            const aiChatInput = document.getElementById('aiChatInput');
             const aiChatSendButton = document.getElementById('aiChatSendButton');
+            // Guard: only bind listeners once — renderDashboard() is called on every
+            // Dashboard tab visit, which would stack duplicate handlers without this check.
+            if (!aiChatSendButton || aiChatSendButton.dataset.bound) return;
+            aiChatSendButton.dataset.bound = '1';
+
+            const aiChatInput = document.getElementById('aiChatInput');
             const aiChatContainer = document.getElementById('aiChat');
             const sendAIChat = async () => {
                 const message = aiChatInput.value.trim();
                 if (!message) return;
-                // SECURITY FIX: Use DOM API + textContent instead of innerHTML to
-                // prevent XSS from user-controlled input.
                 const userMsgWrap = document.createElement('div');
                 userMsgWrap.className = 'flex justify-end mt-2';
                 const userMsgBubble = document.createElement('div');
@@ -435,11 +422,9 @@
                 const context = `Current financial context: Total AP is ${formatCurrency(totalAP, BASE_CURRENCY)}, Total AR is ${formatCurrency(totalAR, BASE_CURRENCY)}, Available Cash is ${formatCurrency(12400000, 'EUR')}.`;
                 const prompt = `${context} Based on this, answer the following user question: "${message}"`;
 
-                // SECURITY: API keys MUST NEVER be embedded in client-side code.
-                // In production, proxy all AI API calls through a backend endpoint
-                // that injects the key server-side (e.g., /api/ai-chat).
-                // An exposed key allows unlimited quota abuse by any user.
-                const apiKey = ""; // Prototype placeholder — set via backend proxy in production
+                // API key MUST be injected server-side via a Vercel Edge/Serverless Function proxy.
+                // Never embed a real key here — it would be visible in the browser network tab.
+                const apiKey = ""; // empty placeholder — wire up /api/ai-chat on Vercel for production
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                 try {
@@ -450,13 +435,10 @@
                     });
                     if (!response.ok) throw new Error(`API request failed (${response.status})`);
                     const result = await response.json();
-                    // SECURITY FIX: Use optional chaining to guard against unexpected API response shape.
                     const aiText = result?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response text received.';
-                    // SECURITY FIX: Escape AI response before rendering; replace newlines with <br> after escaping.
                     thinkingDiv.innerHTML = `<p>${escapeHTML(aiText).replace(/\n/g, '<br>')}</p>`;
                     thinkingDiv.classList.remove('thinking');
                 } catch (error) {
-                    // SECURITY: Do not expose raw error objects or stack traces to the console.
                     console.warn("AI assistant unavailable.");
                     thinkingDiv.innerHTML = `<p>Sorry, the AI assistant is currently unavailable. Please try again later.</p>`;
                     thinkingDiv.classList.remove('thinking');
@@ -464,9 +446,7 @@
                  aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
             };
             if (aiChatSendButton) {
-                // SECURITY FIX: Rate-limit AI requests to prevent API quota abuse.
-                // Each click disables the button for 3 seconds (client-side only).
-                // Production MUST enforce server-side rate limiting per user/IP.
+                // Client-side 3-second cooldown; production MUST add server-side rate limiting.
                 let aiRateLimited = false;
                 const sendWithRateLimit = async () => {
                     if (aiRateLimited) return;
@@ -526,14 +506,17 @@
             const pastDue = apInvoices.filter(i => i.status === 'Past Due').reduce((s, i) => s + convertToBASE(i.amount, i.currency), 0);
             document.getElementById('ap-total-kpi').textContent = formatCurrency(totalAP, BASE_CURRENCY);
             document.getElementById('ap-pastdue-kpi').textContent = formatCurrency(pastDue, BASE_CURRENCY);
-            // SECURITY: escapeHTML applied to all data fields rendered into innerHTML.
             document.getElementById('ap-table-body').innerHTML = apInvoices.map(i => `<tr><td class="px-6 py-4">${escapeHTML(i.id)}</td><td class="px-6 py-4">${escapeHTML(i.vendor)}</td><td class="px-6 py-4 font-semibold">${escapeHTML(formatCurrency(i.amount, i.currency))}</td><td class="px-6 py-4">${escapeHTML(i.dueDate)}</td><td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${i.status === 'Past Due' ? 'bg-red-100 text-red-800' : (i.status === 'Completed' ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800')}">${escapeHTML(i.status)}</span></td><td class="px-6 py-4"><button class="text-blue-600 hover:underline view-ap-details" data-id="${escapeHTML(i.id)}">Details</button></td></tr>`).join('');
-            document.getElementById('ap-table').addEventListener('click', e => {
+            // Guard: ap-table is static HTML — without this the listener stacks on every
+            // renderAPTab() call (each tab switch), causing multiple modals per click.
+            const apTable = document.getElementById('ap-table');
+            if (apTable && !apTable.dataset.bound) {
+                apTable.dataset.bound = '1';
+                apTable.addEventListener('click', e => {
                 if (e.target.classList.contains('view-ap-details')) {
                     const invoice = apInvoices.find(i => i.id === e.target.dataset.id);
                     if (!invoice) return;
                     logAuditEvent('VIEW_AP_INVOICE', `Viewed invoice ${invoice.id} (${invoice.vendor})`);
-                    // SECURITY: all invoice fields escaped before insertion into innerHTML.
                     const modalContent = `<div class="grid grid-cols-2 gap-4 text-sm"><div class="font-semibold text-gray-500">Vendor:</div><div>${escapeHTML(invoice.vendor)}</div><div class="font-semibold text-gray-500">Amount:</div><div>${escapeHTML(formatCurrency(invoice.amount, invoice.currency))}</div><div class="font-semibold text-gray-500">Due Date:</div><div>${escapeHTML(invoice.dueDate)}</div><div class="font-semibold text-gray-500">Status:</div><div>${escapeHTML(invoice.status)}</div><div class="font-semibold text-gray-500">Related PO:</div><div>${escapeHTML(invoice.po)}</div><div class="font-semibold text-gray-500">Related GR:</div><div>${escapeHTML(invoice.gr)}</div></div><h4 class="font-semibold mt-6 mb-2">Approval History</h4><ul class="list-disc list-inside text-sm text-gray-600"><li>Created by Finance Team</li><li>Approved by Department Manager</li><li>Final approval by CFO</li></ul><div class="mt-6 pt-4 border-t"><button class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm draft-email-btn">✨ Draft Follow-up Email</button><div id="email-draft-container" class="mt-4 hidden"><label class="block text-sm font-medium text-gray-700">Generated Email Draft:</label><textarea id="email-draft-area" class="w-full h-40 mt-1 border-gray-300 rounded-md shadow-sm" readonly></textarea></div></div>`;
                     openModal(`Invoice Details: ${invoice.id}`, modalContent);
                     
@@ -541,19 +524,17 @@
                         this.textContent = 'Drafting...';
                         this.disabled = true;
                         const prompt = `You are a finance professional. Draft a polite but firm follow-up email to ${invoice.vendor} regarding invoice ${invoice.id} for ${formatCurrency(invoice.amount, invoice.currency)}, which was due on ${invoice.dueDate} and is currently marked as ${invoice.status}. Keep it concise.`;
-                        // SECURITY: API key must be injected server-side in production — see AI chat note above.
-                        const apiKey = ""; // Prototype placeholder — set via backend proxy in production
+                        // API key injected server-side — see AI chat comment above.
+                        const apiKey = "";
                         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                         try {
                             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
                             if (!response.ok) throw new Error(`API request failed (${response.status})`);
                             const result = await response.json();
-                            // SECURITY FIX: Optional chaining guards against unexpected API response shape.
                             const emailText = result?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response received.';
                             document.getElementById('email-draft-area').value = emailText;
                             document.getElementById('email-draft-container').classList.remove('hidden');
                         } catch (error) {
-                            // SECURITY: Do not expose raw error objects or stack traces to the console.
                             console.warn("Email draft AI unavailable.");
                             document.getElementById('email-draft-area').value = "AI email drafting is currently unavailable. Please try again later.";
                             document.getElementById('email-draft-container').classList.remove('hidden');
@@ -563,14 +544,14 @@
                         }
                     });
                 }
-            });
+                }); // end apTable.addEventListener
+            }  // end if (!apTable.dataset.bound)
         }
         function renderARTab() {
             const totalAR = arReceivables.reduce((s, r) => s + convertToBASE(r.amount, r.currency), 0);
             const overdue = arReceivables.filter(r => r.status === 'Overdue').reduce((s, r) => s + convertToBASE(r.amount, r.currency), 0);
             document.getElementById('ar-total-kpi').textContent = formatCurrency(totalAR, BASE_CURRENCY);
             document.getElementById('ar-overdue-kpi').textContent = formatCurrency(overdue, BASE_CURRENCY);
-            // SECURITY: escapeHTML applied to all data fields rendered into innerHTML.
             document.getElementById('ar-table-body').innerHTML = arReceivables.map(r => `<tr><td class="px-6 py-4">${escapeHTML(r.id)}</td><td class="px-6 py-4">${escapeHTML(r.customer)}</td><td class="px-6 py-4 font-semibold">${escapeHTML(formatCurrency(r.amount, r.currency))}</td><td class="px-6 py-4">${escapeHTML(r.dueDate)}</td><td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${r.status === 'Overdue' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${escapeHTML(r.status)}</span></td></tr>`).join('');
         }
         function renderTreasuryTab() {
@@ -667,7 +648,6 @@
                 const tableContainer = document.getElementById(`${type}-content`);
                 if (!tableContainer) return;
                 if(data.length === 0) { tableContainer.innerHTML = `<p class="text-gray-500">No data available.</p>`; return; }
-                // SECURITY: escape all keys and values from mocked data objects before rendering.
                 const headers = Object.keys(data[0]).map(key => `<th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">${escapeHTML(key)}</th>`).join('');
                 const rows = data.map(row => `<tr>${Object.values(row).map(val => `<td class="px-6 py-4 whitespace-nowrap">${escapeHTML(String(val))}</td>`).join('')}</tr>`).join('');
                 tableContainer.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>${headers}</tr></thead><tbody class="bg-white divide-y divide-gray-200">${rows}</tbody></table></div>`;
@@ -680,8 +660,6 @@
             setupSubTabs('master-data-container');
         }
         function renderGovernanceTab() {
-            // SECURITY NOTE: canEditRoles is a UI-only flag — it controls display only.
-            // In production ALL authorization decisions must be enforced server-side.
             const canEdit = currentUser.permissions?.canEditRoles ?? false;
             logAuditEvent('VIEW_GOVERNANCE', 'Accessed Governance & Security tab.');
             document.getElementById('governance-content').innerHTML = `<div class="p-6"><h2 class="text-2xl font-bold text-gray-800 mb-6">Governance & Security</h2><div class="bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs p-3 rounded-lg mb-4"><strong>Prototype Notice:</strong> All access controls shown here are client-side UI demonstrations only. In production, enforce permissions server-side with RLS policies and backend authorization. Audit log entries below are in-memory only and lost on page reload.</div><div class="bg-white rounded-xl shadow-sm border" id="governance-container"><div class="p-4 border-b"><nav class="flex space-x-8"><button class="sub-tab-button active pb-2 border-b-2" data-tab="roles-content">User Roles & Permissions</button><button class="sub-tab-button pb-2 border-b-2" data-tab="api-content">API Status</button><button class="sub-tab-button pb-2 border-b-2" data-tab="audit-content">Audit Log</button></nav></div><div class="p-6"><div id="roles-content" class="sub-tab-content active"></div><div id="api-content" class="sub-tab-content"></div><div id="audit-content" class="sub-tab-content"></div></div></div></div>`;
@@ -725,7 +703,6 @@
             const docsEl = document.getElementById('process-flow-docs');
             if (!titleEl || !stepsEl || !docsEl) return;
             titleEl.textContent = flow.name;
-            // SECURITY: escape all data fields used in innerHTML template literals.
             stepsEl.innerHTML = flow.steps.map((step, index) => `<div class="process-step" data-step-id="${escapeHTML(step.id)}" data-step="${index + 1}"><h4 class="font-semibold text-gray-700">${escapeHTML(step.name)}</h4><p class="text-sm text-gray-500">${escapeHTML(step.description)}</p></div>`).join('');
             docsEl.innerHTML = flow.documents.map(doc => `<div class="document-link border p-3 rounded-lg cursor-pointer hover:bg-gray-50" data-doc-id="${escapeHTML(doc.id)}" data-doc-stage="${escapeHTML(doc.stage)}"><p class="font-medium text-sm">${escapeHTML(doc.id)}</p><p class="text-xs text-gray-600">${escapeHTML(doc.vendor || doc.customer)} - ${escapeHTML(formatCurrency(doc.amount, doc.currency))}</p></div>`).join('');
             docsEl.addEventListener('click', function(e) {
@@ -999,9 +976,7 @@
 
         // --- MAIN APP LOGIC & EVENT LISTENERS --- //
 
-        // SECURITY: Simple client-side login attempt counter.
-        // After 5 failed attempts the login button is locked for 30 seconds.
-        // Production MUST enforce server-side rate limiting and account lockout.
+        // Brute-force guard: 5 attempts → 30-second lockout. Production must add server-side enforcement.
         let loginAttempts = 0;
         const LOGIN_MAX_ATTEMPTS = 5;
         const LOGIN_LOCKOUT_MS = 30000;
@@ -1011,10 +986,7 @@
 
             const username = document.getElementById('username').value.trim();
 
-            // SECURITY FIX: Guard against prototype pollution.
-            // Using a plain Object.prototype.hasOwnProperty check prevents an attacker
-            // from supplying "__proto__", "constructor", or "prototype" as the username
-            // and accidentally resolving to a truthy inherited property.
+            // Prototype pollution guard: reject __proto__ / constructor / prototype as usernames.
             const isKnownUser = Object.prototype.hasOwnProperty.call(userProfiles, username);
 
             if (isKnownUser && document.getElementById('password').value === 'password') {
@@ -1026,7 +998,6 @@
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('userDisplayName').textContent = currentUser.name;
                 document.getElementById('userRole').textContent = currentUser.role;
-                // SECURITY FIX: Generate avatar locally — do not leak user initials to a third-party service.
                 const avatarEl = document.getElementById('userAvatar');
                 const svgAvatar = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#6366f1"/><text x="20" y="25" text-anchor="middle" font-size="16" font-family="Inter,sans-serif" font-weight="600" fill="#ffffff">${escapeHTML(currentUser.avatar)}</text></svg>`;
                 avatarEl.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgAvatar)}`;
@@ -1048,8 +1019,6 @@
             }
         });
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            // SECURITY FIX: Clear all user session state on logout so a subsequent
-            // browser-back or DevTools inspection reveals no residual user data.
             logAuditEvent('LOGOUT', `User "${currentUser.name}" signed out.`);
             currentUser = {};
             // Destroy chart instances to free memory and prevent stale state

@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Reviewed-green.svg)](SECURITY.md)
 [![Status](https://img.shields.io/badge/Status-Prototype%20%2F%20Educational-yellow.svg)]()
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/arnav-ray/TreasuryFlow)
 
 **TreasuryFlow** is a comprehensive, fully interactive front-end prototype for an enterprise-grade treasury and cash management platform. It is designed to give global finance teams a single source of truth by demonstrating how a centralized overlay can connect disparate ERP data sources, eliminate silos, and empower strategic financial decision-making.
 
@@ -104,6 +105,8 @@ open index.html   # macOS
 
 The application runs entirely in the browser. No internet connection is required for the core UI; the exchange rate ticker, TradingView widget, and AI features require internet access.
 
+**One-click deploy to Vercel:** click the Deploy badge at the top of this README, or run `vercel --prod` from the project root.
+
 ---
 
 ## Demo Accounts
@@ -126,9 +129,11 @@ After 5 failed login attempts the Sign In button locks for 30 seconds.
 
 The Gemini AI features (Treasury Assistant chatbot and AP email drafting) require a valid Google Gemini API key. For security, **the API key must never be embedded in client-side code**. The current prototype has an empty placeholder. To enable AI features:
 
-1. Set up a backend proxy endpoint (e.g., a Cloud Function or Edge Function)
-2. Inject your API key server-side into the request
-3. Point the `apiUrl` constants in `index.html` to your proxy endpoint
+1. Create a Vercel Serverless or Edge Function at `/api/ai-chat` (and `/api/draft-email`)
+2. Add your `GEMINI_API_KEY` as a Vercel Environment Variable (Project → Settings → Environment Variables)
+3. Point the `apiUrl` constants in `index.html` to your `/api/ai-chat` endpoint
+
+The `/api/*` function receives the prompt, injects the key server-side, calls Gemini, and returns only the response text — the key is never exposed to the browser.
 
 See [SECURITY.md](SECURITY.md) § 4.3 for the full production secret management architecture.
 
@@ -151,13 +156,14 @@ TreasuryFlow/
 
 To evolve from prototype to production the following would be required:
 
-- **Backend API** (Node.js / Python / Go) with JWT/OAuth 2.0 authentication
-- **Database** (PostgreSQL via Supabase) with Row Level Security policies
-- **Secret Management** (AWS Secrets Manager / HashiCorp Vault) for all API keys
-- **Real-time ERP connectors** (SAP, Oracle, NetSuite) via API gateway
-- **Immutable server-side audit trail** with 7-year retention
-- **CI/CD pipeline** with SAST, dependency scanning, and secret scanning
-- **GDPR compliance** module (consent, DSAR, right-to-erasure)
+- **Hosting** — Deploy as a Vite/Node project on Vercel with `vercel.json` security headers (HSTS, X-Frame-Options, CSP)
+- **Backend API** — Vercel Serverless or Edge Functions (`/api/*`) with JWT/OAuth 2.0 authentication
+- **Database** — PostgreSQL via Supabase with Row Level Security policies
+- **Secret Management** — Vercel Environment Variables for all API keys; never commit secrets
+- **Real-time ERP connectors** — SAP, Oracle, NetSuite via API gateway
+- **Immutable server-side audit trail** — append-only store with 7-year retention
+- **CI/CD** — Vercel GitHub integration for preview/production deployments + GitHub Actions for SAST, secret scanning, and `npm audit`
+- **GDPR compliance** — consent management, DSAR workflow, right-to-erasure APIs
 
 ---
 
